@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/
+fixtures/*/
+.env
+.DS_Store
+site-data/

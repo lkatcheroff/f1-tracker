@@ -1,0 +1,116 @@
+# Publica el sitio en GitHub Pages y lo mantiene al día:
+# cada 15 minutos mira si F1 publicó sesiones nuevas, las procesa y vuelve a publicar.
+name: Publicar sitio
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Cuántas sesiones recientes se publican ya procesadas (~2 a 5 MB cada una).
+  # Las más viejas siguen disponibles en el sitio, cargadas desde OpenF1.
+  MIRROR_MAX_SESSIONS: "40"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.decide.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Las sesiones ya procesadas viajan de corrida en corrida por la caché de Actions.
+      # Si se pierde, el script las vuelve a bajar del archivo de F1.
+      - name: Recuperar datos ya procesados
+        uses: actions/cache/restore@v4
+        with:
+          path: site-data
+          key: f1-data-${{ github.run_id }}
+          restore-keys: f1-data-
+
+      - run: npm ci
+
+      - name: Procesar sesiones nuevas
+        id: mirror
+        run: npx tsx scripts/mirror.ts site-data
+
+      # Un cron sin novedades termina acá: no recompila ni republica.
+      - name: Decidir si hay que publicar
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "${{ steps.mirror.outputs.changed }}" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Guardar datos procesados
+        if: steps.mirror.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: site-data
+          key: f1-data-${{ github.run_id }}
+
+      - name: Compilar el sitio
+        if: steps.decide.outputs.deploy == 'true'
+        run: |
+          npm run build:pages
+          cp -r site-data apps/web/dist/data
+
+      - name: Subir el sitio
+        if: steps.decide.outputs.deploy == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+      # GitHub desactiva los cron de un repo sin actividad por 60 días (el receso de invierno alcanza).
+      # Volver a habilitar el workflow reinicia ese contador.
+      - name: Mantener activo el cron
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pages.yml/enable"
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  test:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run fixture
+      - run: npm test
