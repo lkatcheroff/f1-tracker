@@ -1,5 +1,6 @@
 # Publica el sitio en GitHub Pages y lo mantiene al día:
-# cada 15 minutos mira si F1 publicó sesiones nuevas, las procesa y vuelve a publicar.
+# cada 15 minutos mira si hay sesiones nuevas, las procesa y vuelve a publicar.
+# F1 le responde 403 a los servidores de GitHub, así que acá los datos salen de OpenF1.
 name: Publicar sitio
 
 on:
@@ -23,6 +24,8 @@ env:
   # Cuántas sesiones recientes se publican ya procesadas (~2 a 5 MB cada una).
   # Las más viejas siguen disponibles en el sitio, cargadas desde OpenF1.
   MIRROR_MAX_SESSIONS: "40"
+  # OpenF1 limita los pedidos: se procesan de a pocas sesiones nuevas por corrida.
+  MIRROR_MAX_NEW_PER_RUN: "5"
 
 jobs:
   build:
@@ -38,7 +41,7 @@ jobs:
           cache: npm
 
       # Las sesiones ya procesadas viajan de corrida en corrida por la caché de Actions.
-      # Si se pierde, el script las vuelve a bajar del archivo de F1.
+      # Si se pierde, el script las vuelve a bajar.
       - name: Recuperar datos ya procesados
         uses: actions/cache/restore@v4
         with:
@@ -112,5 +115,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm run fixture
+      # Los tests contra la carrera real se saltean acá: la fixture solo se puede bajar desde una conexión hogareña.
       - run: npm test

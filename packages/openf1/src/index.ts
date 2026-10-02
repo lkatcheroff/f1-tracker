@@ -1,4 +1,4 @@
-import type { RawMessage } from "@f1/core";
+import type { MeetingEntry, RawMessage } from "@f1/core";
 
 const BASE = "https://api.openf1.org/v1/";
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -80,6 +80,8 @@ interface OpenF1Data {
   pit: Row[];
   raceControl: Row[];
   weather: Row[];
+  /** Resultado final: solo se usa para saber quién abandonó (y se emite recién en el momento del abandono). */
+  results: Row[];
   /** Posiciones aplanadas de a cuatro: nº de auto, epoch ms, x, y. */
   location: number[];
 }
@@ -187,6 +189,7 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       const start = at(r.date_start);
       lapStart.set(`${num}:${r.lap_number}`, start);
       lapStarts.push({ ts: start, lap: r.lap_number });
+      if (r.is_pit_out_lap) line(start, num, { PitOut: true });
       let t = start;
       [r.duration_sector_1, r.duration_sector_2, r.duration_sector_3].forEach((v, i) => {
         if (typeof v !== "number") return;
@@ -216,7 +219,7 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       line(e.ts, e.num, { Sectors: sectors });
       continue;
     }
-    const delta: Row = { NumberOfLaps: e.lap };
+    const delta: Row = { NumberOfLaps: e.lap, PitOut: false };
     if (e.v !== null) {
       const pb = e.v < (bestLap.get(e.num) ?? Infinity);
       const ob = e.v < fastest;
@@ -249,6 +252,18 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
         },
       },
     });
+  }
+
+  // Abandonos: OpenF1 no da el instante. Se marca al minuto de su última vuelta completa,
+  // o a los 45 s de empezar la vuelta que no terminó.
+  for (const r of d.results) {
+    if (!r.dnf) continue;
+    const rows = byDriver.get(r.driver_number);
+    const last = rows?.filter((l) => l.date_start).at(-1);
+    if (!last) continue;
+    const start = at(last.date_start);
+    const ts = typeof last.lap_duration === "number" ? start + last.lap_duration * 1000 + 60_000 : start + 45_000;
+    line(ts, r.driver_number, { Stopped: true });
   }
 
   const stops = new Map<number, number>();
@@ -376,7 +391,7 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
 
   onStep("bajando tiempos de OpenF1");
   const q = { session_key: key };
-  const [meetings, drivers, laps, intervals, position, stints, pit, raceControl, weather] = await Promise.all([
+  const [meetings, drivers, laps, intervals, position, stints, pit, raceControl, weather, results] = await Promise.all([
     get("meetings", { meeting_key: session.meeting_key }),
     get("drivers", q),
     get("laps", q),
@@ -386,6 +401,7 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
     get("pit", q),
     get("race_control", q),
     get("weather", q),
+    get("session_result", q).catch(() => []),
   ]);
   if (!drivers.length || !laps.length) {
     throw new Error("OpenF1 todavía no tiene datos de esta sesión (el histórico gratuito se libera unos 30 minutos después del final).");
@@ -417,5 +433,24 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
   );
 
   onStep("procesando");
-  return adaptOpenF1({ session, meeting: meetings[0], drivers, laps, intervals, position, stints, pit, raceControl, weather, location });
+  return adaptOpenF1({ session, meeting: meetings[0], drivers, laps, intervals, position, stints, pit, raceControl, weather, results, location });
+}
+
+/** Calendario del año según OpenF1, en el mismo formato que el del archivo de F1 (sin `path`). */
+export async function listOpenF1Meetings(year: number): Promise<MeetingEntry[]> {
+  const [meetings, sessions] = await Promise.all([get("meetings", { year }), get("sessions", { year })]);
+  const iso = (d: string) => new Date(d).toISOString();
+  return meetings
+    .sort((a, b) => Date.parse(a.date_start) - Date.parse(b.date_start))
+    .map((m) => ({
+      key: m.meeting_key,
+      name: m.meeting_name,
+      location: m.location,
+      country: m.country_name,
+      sessions: sessions
+        .filter((s) => s.meeting_key === m.meeting_key && !s.is_cancelled)
+        .sort((a, b) => Date.parse(a.date_start) - Date.parse(b.date_start))
+        .map((s) => ({ key: s.session_key, name: s.session_name, type: s.session_type, startUtc: iso(s.date_start), endUtc: iso(s.date_end), path: null, data: null })),
+    }))
+    .filter((m) => m.sessions.length);
 }

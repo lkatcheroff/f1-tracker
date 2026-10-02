@@ -69,12 +69,13 @@ describe("PlaybackClock", () => {
 // --- Sesión real: carrera de Azerbaiyán 2026 (bajar con `npm run fixture`) ---
 
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../fixtures/2026-09-26_Azerbaijan_Grand_Prix_Race");
+const HAS_FIXTURE = existsSync(path.join(FIXTURE, "TimingData.jsonStream"));
 const TOPICS = [
   "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "TimingStats", "LapCount",
   "SessionStatus", "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z",
 ];
 
-describe.skipIf(!existsSync(FIXTURE))("StateEngine contra la fixture", () => {
+describe.skipIf(!HAS_FIXTURE)("StateEngine contra la fixture", () => {
   let messages: RawMessage[];
 
   beforeAll(() => {
@@ -196,7 +197,7 @@ describe.skipIf(!existsSync(FIXTURE))("StateEngine contra la fixture", () => {
   });
 });
 
-describe.skipIf(!existsSync(FIXTURE))("señales para el mapa", () => {
+describe.skipIf(!HAS_FIXTURE)("señales para el mapa", () => {
   let messages: RawMessage[];
   beforeAll(() => {
     const raw: RawMessage[] = [];

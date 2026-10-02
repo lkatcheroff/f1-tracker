@@ -1,5 +1,8 @@
 // Arma los datos del sitio estático: calendario por año + las últimas sesiones ya procesadas.
 // Lo corre la GitHub Action cada pocos minutos; solo baja lo que falta.
+//
+// Fuente: el archivo oficial de F1 si responde (desde una conexión hogareña) y si no, OpenF1.
+// F1 le contesta 403 a los servidores de GitHub, así que la Action siempre termina usando OpenF1.
 // Uso: tsx scripts/mirror.ts <dir-de-salida> [--max 40]
 import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -12,13 +15,17 @@ import {
   REPLAY_TOPICS,
   type MeetingEntry,
   type RawMessage,
+  type SessionEntry,
 } from "@f1/core";
+import { listOpenF1Meetings, loadOpenF1Session } from "@f1/openf1";
 
 const BASE = "https://livetiming.formula1.com/static/";
 const FIRST_YEAR = 2023;
 const outDir = path.resolve(process.argv[2] ?? "site-data");
 const maxArg = process.argv.indexOf("--max");
 const MAX_SESSIONS = Number(maxArg > -1 ? process.argv[maxArg + 1] : (process.env.MIRROR_MAX_SESSIONS ?? 40));
+/** OpenF1 limita a 30 pedidos por minuto y una sesión lleva ~32: se procesan pocas por corrida y el resto, en las siguientes. */
+const MAX_NEW_OPENF1 = Number(process.env.MIRROR_MAX_NEW_PER_RUN ?? 5);
 
 const stripBom = (s: string) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
 
@@ -62,13 +69,17 @@ async function calendar(year: number): Promise<MeetingEntry[] | null> {
   }));
 }
 
-async function mirrorSession(sessionPath: string, file: string): Promise<number> {
+async function fromF1(sessionPath: string): Promise<RawMessage[]> {
   const texts = await Promise.all(REPLAY_TOPICS.map((t) => fetchText(`${BASE}${sessionPath}${t}.jsonStream`)));
   const raw: RawMessage[] = [];
   texts.forEach((text, i) => {
     if (text) for (const m of parseJsonStream(REPLAY_TOPICS[i], text)) raw.push(m);
   });
-  const messages = prepareMessages(raw);
+  return raw;
+}
+
+async function mirrorSession(s: SessionEntry, file: string): Promise<number> {
+  const messages = prepareMessages(s.path ? await fromF1(s.path) : await loadOpenF1Session(s.startUtc, () => {}));
   if (!messages.some((m) => m.topic === "TimingData")) throw new Error("sin TimingData");
   const bytes = packSession({ messages, index: buildIndex(messages), outline: findOutline(messages) });
   await writeFile(file, bytes);
@@ -89,28 +100,39 @@ await mkdir(sessionsDir, { recursive: true });
 const thisYear = new Date().getUTCFullYear();
 let changed = false;
 
+// El archivo de F1 manda si responde; si no (403 desde servidores), todo sale de OpenF1.
+// `MIRROR_SOURCE=openf1` fuerza OpenF1 (para probar en local lo que hace la Action).
+let meetings = process.env.MIRROR_SOURCE === "openf1" ? null : await calendar(thisYear).catch(() => null);
+const useF1 = !!meetings?.length;
+if (!useF1) meetings = await listOpenF1Meetings(thisYear);
+console.log(`fuente: ${useF1 ? "archivo de F1" : "OpenF1"}`);
+
 // Temporadas anteriores: solo el calendario, una vez (las sesiones se abren vía OpenF1).
 for (let y = FIRST_YEAR; y < thisYear; y++) {
   const file = path.join(outDir, `calendar-${y}.json`);
   if (await exists(file)) continue;
-  const meetings = await calendar(y);
-  if (meetings) changed = (await writeIfChanged(file, JSON.stringify(meetings))) || changed;
+  const past = useF1 ? await calendar(y) : await listOpenF1Meetings(y);
+  if (past?.length) changed = (await writeIfChanged(file, JSON.stringify(past))) || changed;
 }
 
-const meetings = (await calendar(thisYear)) ?? [];
-const published = meetings
+// Candidatas: con F1, las ya publicadas en su archivo; con OpenF1, las terminadas hace más de 40 minutos.
+const now = Date.now();
+const published = meetings!
   .flatMap((m) => m.sessions.map((s) => ({ s, label: `${m.name} · ${s.name}` })))
-  .filter((x) => x.s.path)
+  .filter((x) => (useF1 ? x.s.path : Date.parse(x.s.endUtc) + 40 * 60_000 < now))
   .sort((a, b) => b.s.startUtc.localeCompare(a.s.startUtc))
   .slice(0, MAX_SESSIONS);
 
 const keep = new Set<string>();
+let added = 0;
 for (const { s, label } of published) {
   const name = `${s.key}.json.gz`;
   const file = path.join(sessionsDir, name);
   try {
     if (!(await exists(file))) {
-      const size = await mirrorSession(s.path!, file);
+      if (!useF1 && added >= MAX_NEW_OPENF1) continue; // queda para la próxima corrida
+      const size = await mirrorSession(s, file);
+      added++;
       console.log(`nueva: ${label} (${(size / 1048576).toFixed(1)} MB)`);
       changed = true;
     }
@@ -129,6 +151,8 @@ for (const name of await readdir(sessionsDir)) {
   changed = true;
 }
 
+// El calendario publicado no lleva `path`: el sitio estático no puede leer el archivo de F1.
+for (const m of meetings!) for (const s of m.sessions) s.path = null;
 changed = (await writeIfChanged(path.join(outDir, `calendar-${thisYear}.json`), JSON.stringify(meetings))) || changed;
 
 console.log(`${keep.size} sesiones publicadas, cambios: ${changed}`);

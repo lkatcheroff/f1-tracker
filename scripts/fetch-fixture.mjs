@@ -14,10 +14,14 @@ const FILES = [
 const parts = sessionPath.split("/").filter(Boolean);
 const name = `${parts[1]}_${parts[2].replace(/^\d{4}-\d{2}-\d{2}_/, "")}`;
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", name);
-await mkdir(dir, { recursive: true });
 for (const f of FILES) {
   const res = await fetch(`${BASE}${sessionPath}${f}.jsonStream`);
-  if (!res.ok) { console.log(`${f}: HTTP ${res.status}`); continue; }
+  if (!res.ok) {
+    // F1 responde 403 a servidores (por ejemplo, los de GitHub Actions): hay que correrlo desde una conexión hogareña.
+    console.error(`${f}: HTTP ${res.status}. No se pudo bajar la fixture.`);
+    process.exit(1);
+  }
+  await mkdir(dir, { recursive: true });
   const buf = Buffer.from(await res.arrayBuffer());
   await writeFile(path.join(dir, `${f}.jsonStream`), buf);
   console.log(`${f}: ${(buf.length / 1024).toFixed(0)} KB`);
