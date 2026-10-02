@@ -81,7 +81,7 @@ export const GapChart = memo(function GapChart({ history, version, series, race 
             stroke: INK_2,
             grid: { stroke: GRID, width: 1 },
             ticks: { stroke: GRID, width: 1 },
-            values: (_u, vals) => vals.map((v) => `${v}′`),
+            values: (_u, vals) => vals.map((v) => `${v} min`),
           },
           {
             stroke: INK_2,
@@ -136,9 +136,13 @@ export const GapChart = memo(function GapChart({ history, version, series, race 
 
   return (
     <div className="panel chart">
-      <h3>
-        {race ? "Gap al líder" : "Diferencia con el mejor tiempo"} <span className="muted small">· segundos, por minuto de sesión en curso</span>
-      </h3>
+      <h3>{race ? "Gap al líder" : "A cuánto está cada piloto del mejor tiempo"}</h3>
+      <p className="chart-note">
+        {race
+          ? "Segundos que cada piloto está detrás del líder a lo largo de la carrera. Si la línea sube, pierde terreno; si baja, se acerca."
+          : "Diferencia, en segundos, entre la mejor vuelta de cada piloto y la más rápida de la sesión. Cuando la línea baja, ese piloto mejoró su tiempo; en cero está el más rápido."}{" "}
+        Eje horizontal: minutos desde que arrancó la sesión.
+      </p>
       {!series.length && <p className="empty">Elegí de 2 a 4 pilotos haciendo clic en la torre.</p>}
       {series.length > 0 && !hasData && <p className="empty">El gráfico empieza cuando arranca la sesión.</p>}
       <div ref={host} className={`chart-host ${hasData ? "" : "chart-hidden"}`} />
