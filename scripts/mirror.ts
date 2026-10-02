@@ -9,6 +9,7 @@ import path from "node:path";
 import {
   buildIndex,
   findOutline,
+  PACK_VERSION,
   packSession,
   parseJsonStream,
   prepareMessages,
@@ -126,7 +127,7 @@ const published = meetings!
 const keep = new Set<string>();
 let added = 0;
 for (const { s, label } of published) {
-  const name = `${s.key}.json.gz`;
+  const name = `${s.key}.v${PACK_VERSION}.json.gz`;
   const file = path.join(sessionsDir, name);
   try {
     if (!(await exists(file))) {

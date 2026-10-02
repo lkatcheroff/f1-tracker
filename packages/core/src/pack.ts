@@ -8,7 +8,9 @@ export const REPLAY_TOPICS = [
   "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z",
 ];
 
-const VERSION = 1;
+/** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
+export const PACK_VERSION = 2;
+const VERSION = PACK_VERSION;
 
 /**
  * Empaqueta una sesión ya preparada en un único archivo gzip, para publicarla como archivo estático.

@@ -270,9 +270,10 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   for (const r of [...d.pit].sort((a, b) => Date.parse(a.date) - Date.parse(b.date))) {
     const n = (stops.get(r.driver_number) ?? 0) + 1;
     stops.set(r.driver_number, n);
-    const ts = at(r.date);
-    line(ts, r.driver_number, { InPit: true, NumberOfPitStops: n });
-    line(ts + (r.lane_duration ?? r.pit_duration ?? 22) * 1000, r.driver_number, { InPit: false });
+    // `date` es la salida de boxes (verificado contra el feed: coincide con `InPit: false`); la entrada es `date` menos el tiempo en la calle.
+    const out = at(r.date);
+    line(Math.max(0, out - (r.lane_duration ?? r.pit_duration ?? 22) * 1000), r.driver_number, { InPit: true, NumberOfPitStops: n });
+    line(out, r.driver_number, { InPit: false });
   }
 
   if (isRace) {

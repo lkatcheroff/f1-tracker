@@ -89,4 +89,22 @@ Otros datos que salieron de esta ronda:
 - `InPit` pasa a `true` en la entrada de boxes y a `false` en la salida: el recorrido de un auto entre ambos eventos dibuja la calle de boxes.
 - `PitOut` dura solo ~40 s. La vuelta de salida completa se reconoce por los mini-sectores con estado `2064`. Otros estados: `2048` sin mejora, `2049` mejor personal, `2051` mejor absoluto.
 - La API de MultiViewer devolvió para Bakú 2026 la vuelta de referencia de 2022 (mismo trazado). En un circuito modificado, las curvas podrían quedar corridas.
-- La GitHub Action no se pudo ejecutar todavía (no hay repo). El script que corre (`scripts/mirror.ts`) y el sitio compilado sí se probaron en local, servidos desde una subruta.
+
+### F1 bloquea a los servidores de GitHub
+
+Medido desde un runner de GitHub Actions (IP de Azure en EE. UU.) con un workflow de diagnóstico:
+
+| Pedido desde el runner | Respuesta |
+|---|---|
+| `livetiming.formula1.com/static/2026/Index.json` | **403** de CloudFront, con cualquier `User-Agent` |
+| `livetiming.formula1.com/signalrcore/negotiate` | **403** |
+| `api.openf1.org` | 200 |
+| `api.multiviewer.app` | 200 |
+
+El bloqueo es por IP (o por región), no por cómo se identifica el pedido. Consecuencias:
+
+- La Action arma las sesiones del sitio desde OpenF1. La primera corrida real procesó 5 sesiones en 6 minutos y publicó el sitio.
+- El live tampoco puede salir de GitHub: ni el navegador (CORS) ni los runners (403) llegan al feed. Hace falta un proceso en una conexión que F1 acepte.
+- La fixture de los tests solo se puede bajar desde una conexión hogareña; en la Action esos tests se saltean.
+
+En OpenF1, el campo `date` de `pit` es el instante de **salida** de boxes (coincide con `InPit: false` del feed). Con eso la calle de boxes reconstruida desde OpenF1 da los mismos extremos que la del feed oficial.

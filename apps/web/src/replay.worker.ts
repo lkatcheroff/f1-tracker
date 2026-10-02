@@ -24,7 +24,7 @@ async function load(source: string, dataBase: string, onStep: (s: string) => voi
   const kind = source.slice(0, sep);
   const ref = source.slice(sep + 1);
   if (kind === "mirror") {
-    if (!/^s\/\d+\.json\.gz$/.test(ref)) throw new Error(`archivo de sesión inválido: ${ref}`);
+    if (!/^s\/\d+\.v\d+\.json\.gz$/.test(ref)) throw new Error(`archivo de sesión inválido: ${ref}`);
     onStep("bajando la sesión");
     const res = await fetch(dataBase + ref);
     if (!res.ok) throw new Error(`no se pudo bajar la sesión (HTTP ${res.status})`);

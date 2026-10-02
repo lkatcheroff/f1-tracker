@@ -45,18 +45,17 @@ Curvas, sectores de banderilleros y costo de la parada salen de la API pública 
 
 `npm run build:pages` arma una versión estática: el replay corre entero en el navegador (Web Worker), sin server. El workflow `.github/workflows/pages.yml` la publica y la mantiene al día:
 
-- En cada push a `main`, y cada 15 minutos, corre `scripts/mirror.ts`: lee el calendario de F1, baja las sesiones que falten, las procesa (2 a 5 MB cada una) y republica el sitio. Una sesión nueva aparece entre 30 y 60 minutos después de terminar.
-- Publica las últimas 40 sesiones (`MIRROR_MAX_SESSIONS` en el workflow). El resto, y las temporadas desde 2023, se cargan desde OpenF1 en el navegador; la primera carga tarda cerca de un minuto.
+- En cada push a `main`, y cada 15 minutos, corre `scripts/mirror.ts`: lee el calendario, baja las sesiones que falten, las procesa (1 a 4 MB cada una) y republica el sitio. Una sesión nueva aparece entre 45 y 75 minutos después de terminar.
+- **Los datos del sitio salen de OpenF1**, no del archivo de F1: F1 le responde 403 a los servidores de GitHub. Respecto del feed oficial faltan el Safety Car en el mapa y los mini-sectores; los abandonos y el estado de pista son aproximados. Con `npm run dev` en tu máquina el replay usa el archivo oficial completo.
+- Publica las últimas 40 sesiones (`MIRROR_MAX_SESSIONS` en el workflow), de a 5 nuevas por corrida por el rate limit de OpenF1. El resto, y las temporadas desde 2023, se cargan desde OpenF1 en el navegador; la primera carga tarda cerca de un minuto.
 - El modo live no está en el sitio: necesita un server conectado al feed. Sigue disponible en local con `npm run dev`.
 
 Para activarlo: repo público en GitHub, y en Settings → Pages → Source elegir "GitHub Actions".
 
-Con `MIRROR_MAX_SESSIONS: "0"` el sitio no republica datos de F1 y carga todo desde OpenF1.
-
 Para probar el sitio estático en local:
 
 ```bash
-npm run mirror -- site-data --max 4
+MIRROR_SOURCE=openf1 npm run mirror -- site-data --max 4   # sin MIRROR_SOURCE usa el archivo de F1
 npm run build:pages && cp -r site-data apps/web/dist/data
 npx vite preview --outDir apps/web/dist
 ```
