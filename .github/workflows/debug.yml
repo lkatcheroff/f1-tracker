@@ -1,0 +1,16 @@
+name: Diagnóstico de acceso
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          U=https://livetiming.formula1.com/static/2026/Index.json
+          echo "ip: $(curl -s https://api.ipify.org) $(curl -s https://ipinfo.io/country)"
+          echo "curl default: $(curl -s -o /dev/null -w '%{http_code}' $U)"
+          echo "curl browser UA: $(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' -H 'Accept: application/json' -H 'Referer: https://www.formula1.com/' $U)"
+          echo "curl BestHTTP UA: $(curl -s -o /dev/null -w '%{http_code}' -A 'BestHTTP' $U)"
+          curl -s -D - -o /dev/null $U | head -12
+          echo "signalrcore negotiate: $(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Length: 0' 'https://livetiming.formula1.com/signalrcore/negotiate?negotiateVersion=1')"
+          echo "openf1: $(curl -s -o /dev/null -w '%{http_code}' 'https://api.openf1.org/v1/sessions?session_key=11377')"
+          echo "multiviewer: $(curl -s -o /dev/null -w '%{http_code}' 'https://api.multiviewer.app/api/v1/circuits/144/2026')"
