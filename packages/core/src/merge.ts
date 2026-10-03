@@ -24,9 +24,12 @@ export function deepMerge(target: Json, patch: Json): Json {
   return out;
 }
 
-/** Lista a partir de un array o de un objeto con claves índice (según cómo haya llegado). */
+/**
+ * Lista a partir de un array o de un objeto con claves índice (según cómo haya llegado).
+ * Un delta con un índice más alto que el largo del array deja huecos; se descartan.
+ */
 export function asList<T>(v: unknown): T[] {
-  if (Array.isArray(v)) return v as T[];
+  if (Array.isArray(v)) return (v as T[]).filter((x) => x !== undefined);
   if (isObject(v)) {
     return Object.keys(v)
       .filter((k) => /^\d+$/.test(k))

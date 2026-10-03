@@ -45,6 +45,15 @@ describe("deepMerge", () => {
     });
   });
 
+  it("tolera un delta que deja huecos en un array", () => {
+    const engine = new StateEngine();
+    engine.apply({ topic: "RaceControlMessages", ts: 0, data: { Messages: [{ Category: "Flag", Flag: "GREEN", Scope: "Track", Message: "a" }] } });
+    engine.apply({ topic: "RaceControlMessages", ts: 1, data: { Messages: { "3": { Category: "Other", Message: "d" } } } });
+    const s = engine.snapshot();
+    expect(s.raceControl.map((m) => m.message)).toEqual(["a", "d"]);
+    expect(s.yellowSectors).toEqual([]);
+  });
+
   it("agrega elementos nuevos a un array (mensajes de Race Control)", () => {
     const state = deepMerge(undefined, { Messages: [{ Message: "a" }] });
     deepMerge(state, { Messages: { "1": { Message: "b" } } });

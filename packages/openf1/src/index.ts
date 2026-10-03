@@ -290,7 +290,8 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   // Race Control tal cual; el estado de pista y de sesión se deduce de sus mensajes (aproximado).
   let sc = false;
   let aborted = false;
-  d.raceControl.forEach((r, i) => {
+  // En orden cronológico: los deltas van por índice y uno fuera de orden dejaría huecos en la lista.
+  [...d.raceControl].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).forEach((r, i) => {
     const ts = at(r.date);
     const msg: Row = {
       Utc: String(r.date).replace(/(\.\d+)?([+-]\d\d:\d\d|Z)$/, ""),
