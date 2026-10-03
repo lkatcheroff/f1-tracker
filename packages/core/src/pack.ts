@@ -11,6 +11,8 @@ export const REPLAY_TOPICS = [
 /** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
 export const PACK_VERSION = 3;
 const VERSION = PACK_VERSION;
+/** Las versiones anteriores a esta no se pueden leer. */
+const MIN_VERSION = 2;
 
 /**
  * Empaqueta una sesión ya preparada en un único archivo gzip, para publicarla como archivo estático.
@@ -36,7 +38,7 @@ export function packSession(session: Omit<LoadedSession, "source">): Uint8Array 
 
 export function unpackSession(bytes: Uint8Array, source: string): LoadedSession {
   const d = JSON.parse(strFromU8(gunzipSync(bytes)));
-  if (d.v !== VERSION) throw new Error(`formato de sesión desconocido (v${d.v})`);
+  if (typeof d.v !== "number" || d.v < MIN_VERSION || d.v > VERSION) throw new Error(`formato de sesión desconocido (v${d.v})`);
   const messages: RawMessage[] = d.messages.map(([t, ts, data]: [number, number, unknown]) => ({ topic: d.topics[t], ts, data }));
   return { source, messages, index: d.index, outline: d.outline };
 }

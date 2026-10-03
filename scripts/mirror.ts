@@ -125,13 +125,22 @@ const published = meetings!
   .slice(0, MAX_SESSIONS);
 
 const keep = new Set<string>();
+const existing = await readdir(sessionsDir);
 let added = 0;
 for (const { s, label } of published) {
   const name = `${s.key}.v${PACK_VERSION}.json.gz`;
   const file = path.join(sessionsDir, name);
   try {
     if (!(await exists(file))) {
-      if (!useF1 && added >= MAX_NEW_OPENF1) continue; // queda para la próxima corrida
+      if (!useF1 && added >= MAX_NEW_OPENF1) {
+        // Queda para la próxima corrida. Mientras tanto sigue publicada la versión anterior, si la hay.
+        const old = existing.find((n) => n.startsWith(`${s.key}.v`));
+        if (old) {
+          s.data = `s/${old}`;
+          keep.add(old);
+        }
+        continue;
+      }
       const size = await mirrorSession(s, file);
       added++;
       console.log(`nueva: ${label} (${(size / 1048576).toFixed(1)} MB)`);
