@@ -114,15 +114,21 @@ export function SessionView({ target }: { target: Target }) {
                 Vuelta <strong>{snap.lap.current}</strong>/{snap.lap.total}
               </span>
             )}
-            {snap.part && <span className="fact">Q{snap.part}</span>}
-            {snap.status && <span className="fact">{SESSION_STATUS[snap.status] ?? snap.status}</span>}
+            {snap.part ? (
+              <span className="fact">
+                <strong>Q{snap.part}</strong>
+                {snap.status === "Started" && snap.remainingMs !== null ? ` · quedan ${fmtDuration(snap.remainingMs)}` : ` · ${SESSION_STATUS[snap.status] ?? snap.status}`}
+              </span>
+            ) : (
+              snap.status && <span className="fact">{SESSION_STATUS[snap.status] ?? snap.status}</span>
+            )}
             {track && (
               <span className="fact">
                 <span className={`flag flag-${track.tone}`} />
                 {track.label}
               </span>
             )}
-            {snap.remainingMs !== null && !snap.lap && <span className="fact">Restan {fmtDuration(snap.remainingMs)}</span>}
+            {snap.remainingMs !== null && !snap.lap && !snap.part && <span className="fact">Restan {fmtDuration(snap.remainingMs)}</span>}
             {w && (
               <span className="fact muted">
                 Aire {w.air ?? "–"}° · Pista {w.track ?? "–"}°{w.rain ? " · Lluvia" : ""}
@@ -147,7 +153,7 @@ export function SessionView({ target }: { target: Target }) {
 
       {snap && (
         <div className="grid">
-          <Tower drivers={snap.drivers} selected={selectedColors} onToggle={toggle} />
+          <Tower drivers={snap.drivers} through={snap.through} selected={selectedColors} onToggle={toggle} />
           <aside>
             <TrackMap
               outline={t.outline}

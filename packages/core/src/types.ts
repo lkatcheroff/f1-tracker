@@ -55,6 +55,14 @@ export interface DriverRow {
   xy: [number, number] | null;
   onTrack: boolean;
   lapState: LapState;
+  /**
+   * Clasificación: margen respecto del corte de la parte en curso, en segundos.
+   * Para quien pasa, cuánto podría empeorar antes de quedar afuera; para quien está afuera,
+   * cuánto tiene que mejorar para entrar (negativo). null sin tiempo o sin corte.
+   */
+  cutGap: number | null;
+  /** Clasificación: está en puestos de eliminación de la parte en curso. */
+  inCutZone: boolean;
 }
 
 /**
@@ -118,6 +126,8 @@ export interface Snapshot {
   remainingMs: number | null;
   /** Q1/Q2/Q3 en clasificación */
   part: number | null;
+  /** Clasificación: cuántos pasan a la parte siguiente (null en Q3). */
+  through: number | null;
   weather: Weather | null;
   drivers: DriverRow[];
   raceControl: RaceControlMessage[];

@@ -61,6 +61,40 @@ describe("deepMerge", () => {
   });
 });
 
+describe("corte de clasificación", () => {
+  const line = (num: string, pos: number, best: string, extra: Record<string, unknown> = {}) => [
+    num,
+    { RacingNumber: num, Line: pos, Position: String(pos), BestLapTime: { Value: best }, Sectors: [], ...extra },
+  ];
+  it("calcula el margen de cada piloto contra el corte de la parte", () => {
+    const engine = new StateEngine();
+    engine.apply({
+      topic: "TimingData",
+      ts: 0,
+      data: {
+        SessionPart: 2,
+        NoEntries: [22, 16, 10],
+        Lines: Object.fromEntries([
+          ...Array.from({ length: 9 }, (_, i) => line(String(i + 1), i + 1, `1:4${i}.000`)),
+          line("10", 10, "1:45.000"),
+          line("11", 11, "1:45.250"),
+          line("12", 12, "", {}),
+          line("17", 17, "1:46.000", { KnockedOut: true }),
+        ]),
+      },
+    });
+    const s = engine.snapshot();
+    const by = Object.fromEntries(s.drivers.map((d) => [d.num, d]));
+    expect(s.part).toBe(2);
+    expect(s.through).toBe(10);
+    expect(by["10"]).toMatchObject({ cutGap: 0.25, inCutZone: false });
+    expect(by["1"].cutGap).toBeCloseTo(5.25, 3);
+    expect(by["11"]).toMatchObject({ cutGap: -0.25, inCutZone: true });
+    expect(by["12"]).toMatchObject({ cutGap: null, inCutZone: true });
+    expect(by["17"]).toMatchObject({ cutGap: null, inCutZone: false, knockedOut: true });
+  });
+});
+
 describe("PlaybackClock", () => {
   it("avanza según velocidad y respeta la pausa", () => {
     const c = new PlaybackClock();

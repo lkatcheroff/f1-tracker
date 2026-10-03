@@ -434,6 +434,27 @@ aside {
 .row-out {
   color: var(--ink-3);
 }
+.row-cut {
+  background: rgba(229, 72, 77, 0.09);
+}
+.row-cut .tla {
+  color: var(--red);
+}
+.tower tbody tr.row-last-safe td {
+  border-bottom: 2px solid var(--red);
+}
+.cut-safe {
+  color: var(--ink-2);
+}
+.cut-out {
+  color: var(--red);
+  font-weight: 600;
+}
+.tower-note {
+  margin: 8px 12px 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
 .row-out .tla {
   font-weight: 500;
 }
@@ -578,6 +599,9 @@ aside {
 }
 .ring-blue {
   stroke: var(--blue);
+}
+.ring-cut {
+  stroke: var(--red);
 }
 .car-parked {
   fill: var(--surface);

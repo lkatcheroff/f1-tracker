@@ -161,6 +161,34 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   push("SessionStatus", 0, { Status: "Inactive" });
   push("TrackStatus", 0, { Status: "1", Message: "AllClear" });
 
+  // Clasificación: las partes (Q1/Q2/Q3) salen de Race Control. Cada luz verde después de una
+  // bandera a cuadros abre la siguiente. Pasan los primeros N: 22 → 16 → 10 (20 → 15 → 10).
+  const isQuali = /qualifying/i.test(d.session.session_name ?? "");
+  const rcSorted = [...d.raceControl].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  const partStarts: number[] = [];
+  if (isQuali) {
+    let chequered = false;
+    for (const r of rcSorted) {
+      if (r.flag === "CHEQUERED") chequered = true;
+      else if (String(r.message ?? "").toUpperCase().includes("GREEN LIGHT") && (!partStarts.length || chequered)) {
+        partStarts.push(at(r.date));
+        chequered = false;
+      }
+    }
+    const n = d.drivers.length;
+    push("TimingData", 0, { SessionPart: 1, NoEntries: [n, n - Math.ceil((n - 10) / 2), 10] });
+  }
+  const noEntries = [d.drivers.length, d.drivers.length - Math.ceil((d.drivers.length - 10) / 2), 10];
+  const positionAt = (num: number, ts: number) => {
+    let p: number | null = null;
+    for (const r of d.position) {
+      if (r.driver_number !== num) continue;
+      if (at(r.date) > ts) break;
+      p = r.position;
+    }
+    return p;
+  };
+
   for (const r of d.position) line(at(r.date), r.driver_number, { Position: String(r.position), Line: r.position });
 
   if (isRace) {
@@ -178,8 +206,9 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     if (!byDriver.has(r.driver_number)) byDriver.set(r.driver_number, []);
     byDriver.get(r.driver_number)!.push(r);
   }
-  type Ev = { ts: number; num: number; lap: number } & ({ kind: "sector"; i: number; v: number } | { kind: "lap"; v: number | null });
+  type Ev = { ts: number; num: number; lap: number } & ({ kind: "sector"; i: number; v: number } | { kind: "lap"; v: number | null } | { kind: "part"; part: number });
   const events: Ev[] = [];
+  partStarts.slice(1).forEach((ts, i) => events.push({ ts, num: 0, lap: 0, kind: "part", part: i + 2 }));
   const lapStart = new Map<string, number>();
   const lapStarts: { ts: number; lap: number }[] = [];
   for (const [num, rows] of byDriver) {
@@ -207,7 +236,28 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   const bestSector: Record<string, number> = {};
   const bestLap = new Map<number, number>();
   let fastest = Infinity;
+  const knockedOut = new Set<number>();
   for (const e of events) {
+    if (e.kind === "part") {
+      // Arranca Q2 o Q3: quedan afuera los que están por debajo del corte y, para el resto, los tiempos vuelven a cero.
+      const through = noEntries[e.part - 1];
+      push("TimingData", e.ts, { SessionPart: e.part });
+      for (const r of d.drivers) {
+        const num = r.driver_number;
+        if (knockedOut.has(num)) continue;
+        const pos = positionAt(num, e.ts);
+        if (pos !== null && pos > through) {
+          knockedOut.add(num);
+          line(e.ts, num, { KnockedOut: true });
+        } else {
+          line(e.ts, num, { BestLapTime: { Value: "" }, LastLapTime: { ...blank }, Sectors: [{ ...blank }, { ...blank }, { ...blank }] });
+        }
+      }
+      bestLap.clear();
+      fastest = Infinity;
+      continue;
+    }
+    if (knockedOut.has(e.num)) continue;
     if (e.kind === "sector") {
       const pbKey = `${e.num}:${e.i}`;
       const pb = e.v < (bestSector[pbKey] ?? Infinity);
@@ -291,7 +341,7 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   let sc = false;
   let aborted = false;
   // En orden cronológico: los deltas van por índice y uno fuera de orden dejaría huecos en la lista.
-  [...d.raceControl].sort((a, b) => Date.parse(a.date) - Date.parse(b.date)).forEach((r, i) => {
+  rcSorted.forEach((r, i) => {
     const ts = at(r.date);
     const msg: Row = {
       Utc: String(r.date).replace(/(\.\d+)?([+-]\d\d:\d\d|Z)$/, ""),

@@ -1,5 +1,5 @@
 import { asList, deepMerge } from "./merge";
-import { parseClock, parseGap, toNumber } from "./parse";
+import { parseClock, parseGap, parseLapTime, toNumber } from "./parse";
 import type {
   DriverRow,
   GapSample,
@@ -65,6 +65,10 @@ export class StateEngine {
   private lapBufs = new Map<string, { pts: XY[]; dirty: boolean; s2?: number; s3?: number }>();
   private pitBufs = new Map<string, XY[]>();
   private pitLane: XY[] | null = null;
+  /** Clasificación: cuándo empezó la parte en curso y cuándo marcó cada piloto su última vuelta y sus sectores. */
+  private partStartTs = 0;
+  private lapTs: Record<string, number> = {};
+  private sectorTs: Record<string, number[]> = {};
   private readonly checkpointEvery: number;
   private readonly gapSampleEvery: number;
   private readonly epochTs: boolean;
@@ -96,6 +100,7 @@ export class StateEngine {
       case "TimingData":
         if (!this.outline) this.trackLaps(msg.data as Obj);
         if (!this.pitLane && !this.outline?.pit) this.trackPit(msg.data as Obj);
+        this.trackTimes(msg.data as Obj, msg.ts);
         break;
     }
     this.raw[msg.topic] = deepMerge(this.raw[msg.topic], msg.data);
@@ -127,6 +132,9 @@ export class StateEngine {
       this.utcOffset = null;
       this.clockTs = 0;
       this.lastSampleT = -Infinity;
+      this.partStartTs = 0;
+      this.lapTs = {};
+      this.sectorTs = {};
       this.time = 0;
       this.seq = 0;
       this.history.length = 0;
@@ -139,6 +147,9 @@ export class StateEngine {
     this.utcOffset = s.utcOffset;
     this.clockTs = s.clockTs;
     this.lastSampleT = s.lastSampleT ?? -Infinity;
+    this.partStartTs = s.partStartTs ?? 0;
+    this.lapTs = s.lapTs ?? {};
+    this.sectorTs = s.sectorTs ?? {};
     this.time = cp.ts;
     this.seq = cp.seq;
     this.history.length = cp.histLen;
@@ -160,6 +171,9 @@ export class StateEngine {
         utcOffset: this.utcOffset,
         clockTs: this.clockTs,
         lastSampleT: Number.isFinite(this.lastSampleT) ? this.lastSampleT : null,
+        partStartTs: this.partStartTs,
+        lapTs: this.lapTs,
+        sectorTs: this.sectorTs,
       }),
     });
   }
@@ -197,6 +211,22 @@ export class StateEngine {
     }
     // Los autos de seguridad solo figuran mientras están desplegados.
     for (const id of SAFETY_CARS) if (!(id in entries)) delete this.positions[id];
+  }
+
+  /** Recuerda cuándo se marcó cada tiempo: al cambiar de parte en la clasificación, los viejos dejan de mostrarse. */
+  private trackTimes(delta: Obj, ts: number): void {
+    const part = delta?.SessionPart;
+    if (typeof part === "number" && part !== this.raw.TimingData?.SessionPart) this.partStartTs = ts;
+    const lines = delta?.Lines;
+    if (!lines) return;
+    for (const num in lines) {
+      const l = lines[num];
+      if (l?.LastLapTime?.Value) this.lapTs[num] = ts;
+      const sectors = l?.Sectors;
+      if (!sectors || typeof sectors !== "object") continue;
+      const st = (this.sectorTs[num] ??= []);
+      for (const k in sectors) if (sectors[k]?.Value) st[+k] = ts;
+    }
   }
 
   /** La calle de boxes es el recorrido de un auto entre que entra (`InPit`) y sale. */
@@ -304,6 +334,12 @@ export class StateEngine {
     const appLines = (r.TimingAppData?.Lines ?? {}) as Obj;
     const list = (r.DriverList ?? {}) as Obj;
 
+    // Corte de la parte en curso de la clasificación: pasan los primeros `through`.
+    const part = this.sessionPart();
+    const entries = asList<number>(r.TimingData?.NoEntries);
+    const through = part && entries[part] ? entries[part] : null;
+    const cut = through ? cutGaps(lines, through) : null;
+
     const drivers: DriverRow[] = [];
     for (const num in lines) {
       const l = lines[num];
@@ -316,6 +352,10 @@ export class StateEngine {
         ? { compound: stint.Compound, age: stint.TotalLaps ?? 0, isNew: String(stint.New) === "true" }
         : null;
       const pos = this.positions[num];
+      // En Q2 y Q3, los tiempos de la parte anterior ya no cuentan para quienes pasaron.
+      const stale = (t: number | undefined) => !!part && !l.KnockedOut && (t ?? 0) < this.partStartTs;
+      const lastLap = stale(this.lapTs[num]) ? timed(undefined) : timed(l.LastLapTime);
+      const sectors = asList<Obj>(l.Sectors).map((sec, i) => (stale(this.sectorTs[num]?.[i]) ? timed(undefined) : timed(sec)));
       drivers.push({
         num,
         tla: d.Tla ?? num,
@@ -327,9 +367,9 @@ export class StateEngine {
         interval,
         gapSec: this.gapSec(l, gap),
         catching,
-        lastLap: timed(l.LastLapTime),
+        lastLap,
         bestLap: l.BestLapTime?.Value ?? "",
-        sectors: asList<Obj>(l.Sectors).map(timed),
+        sectors,
         laps: l.NumberOfLaps ?? 0,
         pits: l.NumberOfPitStops ?? 0,
         inPit: !!l.InPit,
@@ -341,6 +381,8 @@ export class StateEngine {
         xy: pos ? [pos[0], pos[1]] : null,
         onTrack: pos ? pos[2] : false,
         lapState: lapState(l),
+        cutGap: cut?.get(num)?.gap ?? null,
+        inCutZone: cut?.get(num)?.out ?? false,
       });
     }
     drivers.sort((a, b) => (lines[a.num].Line ?? a.position) - (lines[b.num].Line ?? b.position));
@@ -406,7 +448,8 @@ export class StateEngine {
       track: { status: String(r.TrackStatus?.Status ?? ""), message: r.TrackStatus?.Message ?? "" },
       lap: lc?.CurrentLap ? { current: lc.CurrentLap, total: lc.TotalLaps ?? 0 } : null,
       remainingMs,
-      part: this.sessionPart(),
+      part,
+      through,
       weather,
       drivers,
       raceControl,
@@ -422,6 +465,22 @@ export class StateEngine {
 
 function timed(v: Obj | undefined): TimedValue {
   return { value: v?.Value ?? "", pb: !!v?.PersonalFastest, ob: !!v?.OverallFastest };
+}
+
+/** Margen de cada piloto respecto del corte: contra el primero que queda afuera o contra el último que pasa. */
+function cutGaps(lines: Obj, through: number): Map<string, { gap: number | null; out: boolean }> {
+  const active = Object.entries(lines)
+    .filter(([, l]) => l && !l.KnockedOut && !l.Retired)
+    .map(([num, l]) => ({ num, pos: toNumber(l.Position) ?? 99, best: parseLapTime(l.BestLapTime?.Value) }))
+    .sort((a, b) => a.pos - b.pos);
+  const lastSafe = active[through - 1];
+  const firstOut = active[through];
+  const out = new Map<string, { gap: number | null; out: boolean }>();
+  active.forEach((d, i) => {
+    if (i < through) out.set(d.num, { gap: d.best !== null && firstOut?.best != null ? firstOut.best - d.best : null, out: false });
+    else out.set(d.num, { gap: d.best !== null && lastSafe?.best != null ? lastSafe.best - d.best : null, out: true });
+  });
+  return out;
 }
 
 // Estado de mini-sector en el feed: 2048 sin mejora, 2049 mejor personal, 2051 mejor absoluto, 2064 calle de boxes.

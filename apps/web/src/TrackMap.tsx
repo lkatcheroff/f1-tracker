@@ -165,6 +165,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
       attacking: race && started && !neutralised && running && d.position > 1 && interval !== null && interval > 0 && interval < ATTACK_GAP_S,
       fastest: race && started && d.num === fastest && !parked,
       blue: blue.has(d.num),
+      cutZone: !race && d.inCutZone && !d.knockedOut,
       state,
     };
   });
@@ -260,7 +261,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
           const { d } = v;
           const [x, y] = at(d.xy!);
           const hot = v.state === "purple" || v.state === "green";
-          const ringed = v.leader || v.attacking || v.blue || hot;
+          const ringed = v.leader || v.attacking || v.blue || hot || v.cutZone;
           const out = v.state === "out";
           return (
             <g key={d.num} className={`car ${v.running || v.parked ? "" : "car-off"}`} style={{ transform: `translate(${x}px, ${y}px)` }}>
@@ -270,6 +271,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
                 <circle r={unit * 2.7} className="car-ring ring-attack" strokeWidth={unit * 0.55} strokeDasharray={`${unit * 1.2} ${unit * 0.7}`} />
               )}
               {v.blue && <circle r={unit * (v.attacking ? 3.5 : 2.7)} className="car-ring ring-blue" strokeWidth={unit * 0.55} />}
+              {v.cutZone && <circle r={unit * (hot ? 3.5 : 2.7)} className="car-ring ring-cut" strokeWidth={unit * 0.55} strokeDasharray={`${unit * 0.8} ${unit * 0.6}`} />}
               {hot && <circle r={unit * 2.5} className={`car-ring ring-${v.state}`} strokeWidth={unit * 0.55} />}
               {(v.state === "purple" || v.fastest) && <circle r={unit * 3.5} className="car-ring ring-purple" strokeWidth={unit * 0.35} />}
               {v.parked ? (
@@ -403,6 +405,15 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
               <circle cx="8" cy="5" r="3" fill="none" stroke="var(--ink-2)" strokeWidth="1.4" />
             </svg>
             Vuelta de salida o de entrada
+          </li>
+        )}
+        {any((v) => v.cutZone) && (
+          <li>
+            <svg viewBox="0 0 16 10" className="key">
+              <circle cx="8" cy="5" r="4" className="car-ring ring-cut" strokeWidth="1.2" strokeDasharray="1.6 1.2" />
+              <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
+            </svg>
+            Hoy queda afuera
           </li>
         )}
         {any((v) => v.blue) && (

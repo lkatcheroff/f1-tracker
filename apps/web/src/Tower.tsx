@@ -23,12 +23,18 @@ function state(d: DriverRow): string {
 
 interface Props {
   drivers: DriverRow[];
+  /** Clasificación: cuántos pasan de ronda; agrega la columna de corte y marca la zona de eliminación. */
+  through: number | null;
   /** nº de auto → color de su serie en el gráfico de gaps */
   selected: Record<string, string>;
   onToggle: (num: string) => void;
 }
 
-export const Tower = memo(function Tower({ drivers, selected, onToggle }: Props) {
+const fmtCut = (g: number) => `${g >= 0 ? "+" : "−"}${Math.abs(g).toFixed(3)}`;
+
+export const Tower = memo(function Tower({ drivers, through, selected, onToggle }: Props) {
+  const cut = through !== null;
+  const lastSafe = cut ? drivers.filter((d) => !d.knockedOut && !d.retired)[through - 1]?.num : null;
   return (
     <div className="panel tower-wrap">
       <table className="tower">
@@ -40,6 +46,11 @@ export const Tower = memo(function Tower({ drivers, selected, onToggle }: Props)
             <th className="num">Int</th>
             <th className="num">Última</th>
             <th className="num">Mejor</th>
+            {cut && (
+              <th className="num" title="Margen respecto del corte: + lo que le sobra al que pasa, − lo que le falta al que está afuera">
+                Corte
+              </th>
+            )}
             <th className="num">S1</th>
             <th className="num">S2</th>
             <th className="num">S3</th>
@@ -56,7 +67,7 @@ export const Tower = memo(function Tower({ drivers, selected, onToggle }: Props)
             return (
               <tr
                 key={d.num}
-                className={`${out ? "row-out" : ""} ${series ? "row-sel" : ""}`}
+                className={`${out ? "row-out" : ""} ${series ? "row-sel" : ""} ${d.inCutZone ? "row-cut" : ""} ${d.num === lastSafe ? "row-last-safe" : ""}`}
                 onClick={() => onToggle(d.num)}
                 title={`${d.name} · ${d.team}. Clic para sumarlo o sacarlo del gráfico de gaps`}
               >
@@ -73,6 +84,11 @@ export const Tower = memo(function Tower({ drivers, selected, onToggle }: Props)
                 <td className={`num ${d.catching ? "catching" : ""}`}>{d.interval}</td>
                 <td className={`num ${timedClass(d.lastLap)}`}>{d.lastLap.value}</td>
                 <td className="num">{d.bestLap}</td>
+                {cut && (
+                  <td className={`num cut ${d.inCutZone ? "cut-out" : "cut-safe"}`}>
+                    {d.knockedOut ? "" : d.cutGap === null ? (d.inCutZone ? "sin tiempo" : "") : fmtCut(d.cutGap)}
+                  </td>
+                )}
                 {[0, 1, 2].map((i) => {
                   const s = d.sectors[i];
                   return (
@@ -99,6 +115,12 @@ export const Tower = memo(function Tower({ drivers, selected, onToggle }: Props)
         </tbody>
       </table>
       {!drivers.length && <p className="empty">Todavía no hay datos de tiempos.</p>}
+      {cut && drivers.length > 0 && (
+        <p className="tower-note">
+          Pasan los primeros {through}. La línea roja es el corte; abajo, en rojo, los que hoy quedan afuera. Corte: + lo que le sobra, − lo que le
+          falta.
+        </p>
+      )}
     </div>
   );
 });

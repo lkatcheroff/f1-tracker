@@ -39,6 +39,8 @@ En carrera: líder, quién tiene la vuelta rápida, autos a menos de 1 s del de 
 
 En práctica y clasificación: quién viene en vuelta con récord de sector, quién viene mejorando su marca y quién está en vuelta de salida o de entrada.
 
+En clasificación, la torre muestra cuánto queda de Q1, Q2 o Q3, la columna **Corte** (cuánto le sobra al que pasa o cuánto le falta al que está afuera), la línea del corte y, en rojo, los que hoy quedan eliminados. Al arrancar Q2 y Q3, los tiempos de la parte anterior desaparecen para los que pasaron.
+
 Curvas, sectores de banderilleros y costo de la parada salen de la API pública de MultiViewer. Si no responde, el mapa se dibuja sin esas marcas.
 
 ## Sitio en GitHub Pages
