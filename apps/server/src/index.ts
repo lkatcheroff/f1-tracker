@@ -3,7 +3,7 @@ import type { ClientCommand, ServerMessage, SessionsResponse } from "@f1/core";
 import Fastify from "fastify";
 import { listMeetings } from "./archive";
 import { config } from "./config";
-import { loadSession } from "./loader";
+import { loadSession, loadTelemetryFile } from "./loader";
 import { listRecordings } from "./recorder";
 import { liveHub, ReplaySession, type ClientSession } from "./sessions";
 
@@ -14,6 +14,18 @@ app.get<{ Querystring: { year?: string } }>("/api/sessions", async (req): Promis
   const year = Number(req.query.year) || new Date().getUTCFullYear();
   const [meetings, recordings] = await Promise.all([listMeetings(year), listRecordings()]);
   return { year, meetings, recordings };
+});
+
+app.get<{ Querystring: { source?: string } }>("/api/telemetry", async (req, reply) => {
+  const source = req.query.source;
+  if (!source) return reply.code(400).send({ error: "falta source" });
+  try {
+    const bytes = await loadTelemetryFile(source);
+    if (!bytes) return reply.code(404).send({ error: "esta sesión no tiene telemetría" });
+    return reply.header("content-type", "application/octet-stream").send(Buffer.from(bytes));
+  } catch (err) {
+    return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 app.get("/ws", { websocket: true }, (socket) => {

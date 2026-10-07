@@ -7,3 +7,5 @@ export * from "./replay";
 export * from "./protocol";
 export * from "./player";
 export * from "./pack";
+export * from "./telemetry";
+export * from "./compare";

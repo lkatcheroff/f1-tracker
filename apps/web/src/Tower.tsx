@@ -30,6 +30,35 @@ interface Props {
   onToggle: (num: string) => void;
 }
 
+/** Estado de un mini-sector del feed → clase y texto. */
+function miniClass(code: number): string {
+  if (!code) return "m-none";
+  if (code === 2051) return "m-purple";
+  if (code === 2049) return "m-green";
+  if (code === 2064) return "m-pit";
+  return "m-yellow";
+}
+const MINI_TEXT: Record<string, string> = {
+  "m-none": "sin pasar",
+  "m-yellow": "sin mejora",
+  "m-green": "mejor marca personal",
+  "m-purple": "mejor marca de la sesión",
+  "m-pit": "calle de boxes",
+};
+
+/** Los mini-sectores de un sector, como una barrita de colores: violeta = mejor de la sesión, verde = mejor propio, amarillo = sin mejora. */
+function Minis({ codes }: { codes: number[] | undefined }) {
+  if (!codes?.length) return null;
+  return (
+    <span className="minis" aria-hidden="true">
+      {codes.map((c, i) => {
+        const cls = miniClass(c);
+        return <i key={i} className={cls} title={`Mini-sector ${i + 1}: ${MINI_TEXT[cls]}`} />;
+      })}
+    </span>
+  );
+}
+
 const fmtCut = (g: number) => `${g >= 0 ? "+" : "−"}${Math.abs(g).toFixed(3)}`;
 
 export const Tower = memo(function Tower({ drivers, through, selected, onToggle }: Props) {
@@ -94,6 +123,7 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
                   return (
                     <td key={i} className={`num sector ${s ? timedClass(s) : ""}`}>
                       {s?.value}
+                      <Minis codes={d.minis[i]} />
                     </td>
                   );
                 })}

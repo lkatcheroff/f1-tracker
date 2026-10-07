@@ -90,6 +90,15 @@ Otros datos que salieron de esta ronda:
 - `PitOut` dura solo ~40 s. La vuelta de salida completa se reconoce por los mini-sectores con estado `2064`. Otros estados: `2048` sin mejora, `2049` mejor personal, `2051` mejor absoluto.
 - La API de MultiViewer devolvió para Bakú 2026 la vuelta de referencia de 2022 (mismo trazado). En un circuito modificado, las curvas podrían quedar corridas.
 
+## 6. Telemetría
+
+- `CarData.z` (2026): canales `0` rpm, `2` velocidad, `3` marcha, `4` acelerador (0 a 104, se recorta a 100) y `5` freno (0 o 100+). Sin canal `45` (DRS). Unas 4 muestras por segundo por auto. Los mismos canales llegan por `car_data` de OpenF1 (`rpm`, `speed`, `n_gear`, `throttle`, `brake`).
+- Las muestras de `Position.z` y `CarData.z` tienen reloj propio (`Timestamp` / `Utc`) y llegan en lotes con ~1 s de demora; para alinear telemetría con posiciones vale el reloj de la muestra, no el de llegada del lote.
+- Los tiempos de vuelta y sector oficiales no sirven para ubicar la meta con precisión de ms (el mensaje de cronometraje sale algo después del cruce): la traza se alinea por posición y se escala para que el tiempo total sea el oficial.
+- **Bug encontrado y corregido:** con OpenF1, que sí trae la vuelta de formación, el trazado se armaba con dos vueltas (11,9 km en Bakú) y la meta quedaba en la grilla. Ahora se rechaza un recorrido que pasa por la meta a mitad de camino.
+- OpenF1 respondió una vez `422 "demasiados datos de una vez"` a un pedido de `location` que otras veces acepta; se reintenta y, si insiste, se parte el rango en dos.
+- Cada sesión con telemetría son ~55 pedidos a OpenF1 (límite: 30 por minuto).
+
 ### F1 bloquea a los servidores de GitHub
 
 Medido desde un runner de GitHub Actions (IP de Azure en EE. UU.) con un workflow de diagnóstico:

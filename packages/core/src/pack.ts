@@ -2,14 +2,14 @@ import { gunzipSync, gzipSync, strFromU8, strToU8 } from "fflate";
 import type { LoadedSession } from "./player";
 import type { RawMessage } from "./types";
 
-/** Streams del archivo estático de F1 que usa el replay. `CarData.z` y `TimingStats` quedan fuera del MVP. */
+/** Streams del archivo estático de F1 que usa el replay. `CarData.z` solo alimenta la telemetría; `TimingStats` queda fuera. */
 export const REPLAY_TOPICS = [
   "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "LapCount", "SessionStatus",
-  "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z",
+  "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z", "CarData.z",
 ];
 
 /** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
-export const PACK_VERSION = 3;
+export const PACK_VERSION = 4;
 const VERSION = PACK_VERSION;
 /** Las versiones anteriores a esta no se pueden leer. */
 const MIN_VERSION = 2;
@@ -20,7 +20,8 @@ const MIN_VERSION = 2;
  */
 export function packSession(session: Omit<LoadedSession, "source">): Uint8Array {
   const topics: string[] = [];
-  const messages = session.messages.map((m) => {
+  // La telemetría va en su propio archivo (`packTelemetry`): acá pesaría el doble y casi nadie la abre.
+  const messages = session.messages.filter((m) => m.topic !== "CarData").map((m) => {
     let t = topics.indexOf(m.topic);
     if (t === -1) t = topics.push(m.topic) - 1;
     let data = m.data;

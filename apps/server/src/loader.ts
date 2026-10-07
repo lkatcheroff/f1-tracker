@@ -1,4 +1,4 @@
-import { buildIndex, findOutline, prepareMessages, type LoadedSession, type RawMessage } from "@f1/core";
+import { buildIndex, buildTelemetry, findOutline, packTelemetry, prepareMessages, type LoadedSession, type RawMessage } from "@f1/core";
 import { loadStaticSession } from "./archive";
 import { loadOpenF1Session } from "./openf1";
 import { loadRecording } from "./recorder";
@@ -33,5 +33,22 @@ export function loadSession(source: string, onStep: (s: string) => void): Promis
   cache.set(source, p);
   p.catch(() => cache.delete(source));
   while (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value!);
+  return p;
+}
+
+const telemetryCache = new Map<string, Promise<Uint8Array | null>>();
+
+/** Telemetría de una sesión, ya empaquetada (el mismo formato que publica el sitio). null si no se pudo armar. */
+export function loadTelemetryFile(source: string): Promise<Uint8Array | null> {
+  const hit = telemetryCache.get(source);
+  if (hit) return hit;
+  const p = (async () => {
+    const session = await loadSession(source, () => {});
+    const tel = buildTelemetry(session.messages, session.outline);
+    return tel ? packTelemetry(tel) : null;
+  })();
+  telemetryCache.set(source, p);
+  p.catch(() => telemetryCache.delete(source));
+  while (telemetryCache.size > MAX_CACHED) telemetryCache.delete(telemetryCache.keys().next().value!);
   return p;
 }

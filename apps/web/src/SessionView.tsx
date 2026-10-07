@@ -5,6 +5,7 @@ import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
 import { GapChart, SERIES_COLORS, type ChartSeries } from "./GapChart";
 import { LivePanel } from "./LivePanel";
 import { RaceControl } from "./RaceControl";
+import { TelemetryPanel } from "./TelemetryPanel";
 import { Tower } from "./Tower";
 import { TrackMap } from "./TrackMap";
 import type { Target } from "./transport";
@@ -166,6 +167,11 @@ export function SessionView({ target }: { target: Target }) {
             <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />
             <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />
           </aside>
+        </div>
+      )}
+      {snap && target.mode === "replay" && (
+        <div className="tel-wrap">
+          <TelemetryPanel source={target.source} snap={snap} outline={t.outline} circuit={circuit} spoilerFree={spoilerFree} />
         </div>
       )}
     </div>

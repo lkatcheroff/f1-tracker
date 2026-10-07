@@ -43,13 +43,29 @@ En clasificación, la torre muestra cuánto queda de Q1, Q2 o Q3, la columna **C
 
 Curvas, sectores de banderilleros y costo de la parada salen de la API pública de MultiViewer. Si no responde, el mapa se dibuja sin esas marcas.
 
+## Telemetría y comparación
+
+Los **mini-sectores** de cada piloto se ven dentro de las celdas S1, S2 y S3 de la torre: una barrita por mini-sector, violeta si es la mejor marca de la sesión, verde si es mejor marca propia y amarillo si no mejora. Se completan a medida que el auto avanza.
+
+El panel **Telemetría y comparación** (debajo de la torre, se abre a pedido) compara dos vueltas a lo largo de la pista, en metros desde la meta, con la meta, los sectores y los números de curva marcados:
+
+- **Diferencia de tiempo** acumulada, velocidad, acelerador, freno y marcha, con un cursor compartido y una lectura al instante de cada piloto.
+- **Vuelta en curso:** se dibuja a medida que avanza la vuelta del piloto elegido y se compara contra la referencia punto a punto. Al cerrar la vuelta queda completa.
+- **Referencias:** la mejor vuelta de la sesión hasta ese momento, su mejor vuelta, su vuelta anterior, otro piloto (compañero, auto de adelante o de atrás, o cualquiera) y, en clasificación, el último que pasa y el primero que queda afuera de esa parte. Por defecto: el corte en clasificación y la mejor de la sesión en el resto.
+- **Después de la sesión:** se puede elegir cualquier vuelta de cualquier piloto. Con **Sin spoilers** activado solo aparecen las vueltas ya cerradas en el momento que se está viendo; sin él, todas.
+- Tabla de S1, S2, S3 y vuelta con la diferencia en cada tramo.
+
+La telemetría sale de la posición y de `car_data`/`CarData.z` de cada auto, remuestreada en 300 puntos por vuelta. Los tiempos de sector se derivan de esa traza y suman el tiempo oficial de la vuelta. Se descartan las vueltas que no se pueden medir con confianza (la 1 de una carrera, algunas vueltas de boxes bajo Safety Car). En una misma carrera, el feed oficial y OpenF1 dan la misma telemetría: tiempos de vuelta idénticos al milisegundo y 0,7 km/h de diferencia media en velocidad.
+
+La telemetría **no está en el modo live** (sin cuenta de F1 el feed no trae posiciones ni telemetría) ni en las sesiones que se abren directo desde OpenF1 en el navegador.
+
 ## Sitio en GitHub Pages
 
 `npm run build:pages` arma una versión estática: el replay corre entero en el navegador (Web Worker), sin server. El workflow `.github/workflows/pages.yml` la publica y la mantiene al día:
 
 - En cada push a `main`, y cada 15 minutos, corre `scripts/mirror.ts`: lee el calendario, baja las sesiones que falten, las procesa (1 a 4 MB cada una) y republica el sitio. Una sesión nueva aparece entre 45 y 75 minutos después de terminar.
 - **Los datos del sitio salen de OpenF1**, no del archivo de F1: F1 le responde 403 a los servidores de GitHub. Respecto del feed oficial faltan el Safety Car en el mapa y los mini-sectores; los abandonos y el estado de pista son aproximados. Con `npm run dev` en tu máquina el replay usa el archivo oficial completo.
-- Publica las últimas 40 sesiones (`MIRROR_MAX_SESSIONS` en el workflow), de a 5 nuevas por corrida por el rate limit de OpenF1. El resto, y las temporadas desde 2023, se cargan desde OpenF1 en el navegador; la primera carga tarda cerca de un minuto.
+- Publica las últimas 40 sesiones (`MIRROR_MAX_SESSIONS` en el workflow), de a 10 nuevas por corrida por el rate limit de OpenF1. Cada sesión sale en dos archivos: `s/` (la sesión, 1 a 4 MB) y `t/` (su telemetría, 0,4 a 1,5 MB). El resto, y las temporadas desde 2023, se cargan desde OpenF1 en el navegador; la primera carga tarda cerca de un minuto.
 - El modo live no está en el sitio: necesita un server conectado al feed. Sigue disponible en local con `npm run dev`.
 
 Para activarlo: repo público en GitHub, y en Settings → Pages → Source elegir "GitHub Actions".

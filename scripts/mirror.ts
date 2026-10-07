@@ -8,12 +8,15 @@ import { appendFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:
 import path from "node:path";
 import {
   buildIndex,
+  buildTelemetry,
   findOutline,
   PACK_VERSION,
   packSession,
+  packTelemetry,
   parseJsonStream,
   prepareMessages,
   REPLAY_TOPICS,
+  TELEMETRY_VERSION,
   type MeetingEntry,
   type RawMessage,
   type SessionEntry,
@@ -25,7 +28,7 @@ const FIRST_YEAR = 2023;
 const outDir = path.resolve(process.argv[2] ?? "site-data");
 const maxArg = process.argv.indexOf("--max");
 const MAX_SESSIONS = Number(maxArg > -1 ? process.argv[maxArg + 1] : (process.env.MIRROR_MAX_SESSIONS ?? 40));
-/** OpenF1 limita a 30 pedidos por minuto y una sesión lleva ~32: se procesan pocas por corrida y el resto, en las siguientes. */
+/** OpenF1 limita a 30 pedidos por minuto y una sesión lleva ~55 con telemetría: se procesan pocas por corrida y el resto, en las siguientes. */
 const MAX_NEW_OPENF1 = Number(process.env.MIRROR_MAX_NEW_PER_RUN ?? 5);
 
 const stripBom = (s: string) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s);
@@ -79,12 +82,20 @@ async function fromF1(sessionPath: string): Promise<RawMessage[]> {
   return raw;
 }
 
-async function mirrorSession(s: SessionEntry, file: string): Promise<number> {
-  const messages = prepareMessages(s.path ? await fromF1(s.path) : await loadOpenF1Session(s.startUtc, () => {}));
+/** Escribe la sesión y su telemetría. Si no hay telemetría que armar, deja un marcador vacío para no reintentar siempre. */
+async function mirrorSession(s: SessionEntry, file: string, telFile: string): Promise<{ size: number; tel: number | null }> {
+  const raw = s.path ? await fromF1(s.path) : await loadOpenF1Session(s.startUtc, () => {}, { withCar: true });
+  const messages = prepareMessages(raw);
   if (!messages.some((m) => m.topic === "TimingData")) throw new Error("sin TimingData");
-  const bytes = packSession({ messages, index: buildIndex(messages), outline: findOutline(messages) });
+  const outline = findOutline(messages);
+  const bytes = packSession({ messages, index: buildIndex(messages), outline });
+
+  const tel = buildTelemetry(messages, outline);
+  const telBytes = tel ? packTelemetry(tel) : null;
+  // Primero la telemetría: si el proceso se corta entre los dos, la sesión falta y se rehace todo en la próxima corrida.
+  await writeFile(telFile, telBytes ?? "");
   await writeFile(file, bytes);
-  return bytes.length;
+  return { size: bytes.length, tel: telBytes?.length ?? null };
 }
 
 const exists = (p: string) => stat(p).then(() => true, () => false);
@@ -97,7 +108,9 @@ async function writeIfChanged(file: string, content: string): Promise<boolean> {
 }
 
 const sessionsDir = path.join(outDir, "s");
+const telemetryDir = path.join(outDir, "t");
 await mkdir(sessionsDir, { recursive: true });
+await mkdir(telemetryDir, { recursive: true });
 const thisYear = new Date().getUTCFullYear();
 let changed = false;
 
@@ -130,8 +143,9 @@ let added = 0;
 for (const { s, label } of published) {
   const name = `${s.key}.v${PACK_VERSION}.json.gz`;
   const file = path.join(sessionsDir, name);
+  const telFile = path.join(telemetryDir, `${s.key}.v${TELEMETRY_VERSION}.json.gz`);
   try {
-    if (!(await exists(file))) {
+    if (!(await exists(file)) || !(await exists(telFile))) {
       if (!useF1 && added >= MAX_NEW_OPENF1) {
         // Queda para la próxima corrida. Mientras tanto sigue publicada la versión anterior, si la hay.
         const old = existing.find((n) => n.startsWith(`${s.key}.v`));
@@ -141,9 +155,9 @@ for (const { s, label } of published) {
         }
         continue;
       }
-      const size = await mirrorSession(s, file);
+      const { size, tel } = await mirrorSession(s, file, telFile);
       added++;
-      console.log(`nueva: ${label} (${(size / 1048576).toFixed(1)} MB)`);
+      console.log(`nueva: ${label} (${(size / 1048576).toFixed(1)} MB, telemetría ${tel === null ? "no disponible" : `${(tel / 1048576).toFixed(1)} MB`})`);
       changed = true;
     }
     s.data = `s/${name}`;
@@ -158,6 +172,14 @@ for (const name of await readdir(sessionsDir)) {
   if (keep.has(name)) continue;
   await rm(path.join(sessionsDir, name));
   console.log(`fuera de la ventana: ${name}`);
+  changed = true;
+}
+
+// La telemetría solo se conserva de las sesiones que siguen publicadas.
+const keptKeys = new Set([...keep].map((n) => n.split(".")[0]));
+for (const name of await readdir(telemetryDir)) {
+  if (keptKeys.has(name.split(".")[0])) continue;
+  await rm(path.join(telemetryDir, name));
   changed = true;
 }
 

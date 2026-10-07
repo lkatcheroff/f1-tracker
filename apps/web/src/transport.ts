@@ -1,4 +1,4 @@
-import type { ClientCommand, ServerMessage, SessionsResponse } from "@f1/core";
+import { TELEMETRY_VERSION, unpackTelemetry, type ClientCommand, type ServerMessage, type SessionsResponse, type SessionTelemetry } from "@f1/core";
 
 /**
  * El front habla el mismo protocolo en los dos despliegues:
@@ -75,4 +75,24 @@ export async function loadSessions(year: number): Promise<SessionsResponse> {
   if (!res.ok) throw new Error(STATIC ? `no hay calendario publicado para ${year}` : `el server respondió HTTP ${res.status}`);
   const body = await res.json();
   return STATIC ? { year, meetings: body, recordings: [] } : body;
+}
+
+/**
+ * Telemetría de la sesión abierta, o null si no hay. Se pide recién cuando el usuario abre el panel:
+ * pesa 1 a 2 MB. En el sitio estático la publica la Action junto con cada sesión; en local la arma el server.
+ */
+export async function loadTelemetry(source: string): Promise<SessionTelemetry | null> {
+  let url: string;
+  if (STATIC) {
+    const key = /^mirror:s\/(\d+)\./.exec(source)?.[1];
+    if (!key) return null; // sesiones cargadas desde OpenF1 en el navegador: sin telemetría
+    url = `${dataBase()}t/${key}.v${TELEMETRY_VERSION}.json.gz`;
+  } else {
+    url = `/api/telemetry?source=${encodeURIComponent(source)}`;
+  }
+  const res = await fetch(url, { cache: "no-cache" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`no se pudo bajar la telemetría (HTTP ${res.status})`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  return bytes.length ? unpackTelemetry(bytes) : null; // vacío = la Action no pudo armarla para esta sesión
 }

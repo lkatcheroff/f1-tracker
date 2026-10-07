@@ -48,3 +48,15 @@ export const store = {
     }
   },
 };
+
+/** 107607 → "1:47.607" */
+export function fmtLapMs(ms: number): string {
+  const m = Math.floor(ms / 60000);
+  return `${m}:${((ms - m * 60000) / 1000).toFixed(3).padStart(6, "0")}`;
+}
+
+/** 38060 → "38.060" */
+export const fmtSecMs = (ms: number) => (ms / 1000).toFixed(3);
+
+/** +0.123 / −0.123 */
+export const fmtDelta = (s: number) => `${s >= 0 ? "+" : "−"}${Math.abs(s).toFixed(3)}`;

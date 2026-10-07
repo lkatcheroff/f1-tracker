@@ -92,6 +92,8 @@ export class StateEngine {
       case "Position":
         this.applyPosition(msg.data as Obj);
         return;
+      case "CarData":
+        return; // telemetría: la usa `buildTelemetry`, el estado de la sesión no la necesita
       case "Heartbeat": {
         const utc = Date.parse((msg.data as Obj)?.Utc);
         if (Number.isFinite(utc) && !this.epochTs) this.utcOffset = utc - msg.ts;
@@ -229,6 +231,16 @@ export class StateEngine {
     }
   }
 
+  /** Datos puntuales de un piloto para indexar sus vueltas: neumático en uso y parte de la clasificación. */
+  peek(num: string): { tyre: Tyre | null; part: number | null } {
+    const stints = asList<Obj>(this.raw.TimingAppData?.Lines?.[num]?.Stints);
+    const stint = stints[stints.length - 1];
+    const tyre: Tyre | null = stint?.Compound
+      ? { compound: stint.Compound, age: stint.TotalLaps ?? 0, isNew: String(stint.New) === "true" }
+      : null;
+    return { tyre, part: this.sessionPart() };
+  }
+
   /** La calle de boxes es el recorrido de un auto entre que entra (`InPit`) y sale. */
   private trackPit(delta: Obj): void {
     const lines = delta?.Lines;
@@ -356,6 +368,9 @@ export class StateEngine {
       const stale = (t: number | undefined) => !!part && !l.KnockedOut && (t ?? 0) < this.partStartTs;
       const lastLap = stale(this.lapTs[num]) ? timed(undefined) : timed(l.LastLapTime);
       const sectors = asList<Obj>(l.Sectors).map((sec, i) => (stale(this.sectorTs[num]?.[i]) ? timed(undefined) : timed(sec)));
+      const minis = asList<Obj>(l.Sectors).map((sec, i) =>
+        stale(this.sectorTs[num]?.[i]) ? [] : asList<Obj>(sec?.Segments).map((g) => (typeof g?.Status === "number" ? g.Status : 0)),
+      );
       drivers.push({
         num,
         tla: d.Tla ?? num,
@@ -381,6 +396,7 @@ export class StateEngine {
         xy: pos ? [pos[0], pos[1]] : null,
         onTrack: pos ? pos[2] : false,
         lapState: lapState(l),
+        minis,
         cutGap: cut?.get(num)?.gap ?? null,
         inCutZone: cut?.get(num)?.out ?? false,
       });
@@ -539,6 +555,10 @@ function toOutline(pts: XY[]): TrackOutline | null {
   if (diag < 1000) return null;
   const dist = (a: XY, b: XY) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   if (dist(pts[0], pts[pts.length - 1]) > diag * 0.08) return null;
+  // Una sola vuelta no vuelve a pasar por la meta a mitad de camino. Si lo hace, el recorrido junta dos vueltas
+  // (por ejemplo la de formación, que OpenF1 sí trae): también cierra, pero el largo y la meta quedan mal.
+  const n = pts.length;
+  for (let i = Math.floor(n * 0.15); i < Math.floor(n * 0.85); i++) if (dist(pts[i], pts[0]) < 250) return null;
   for (let i = 1; i < pts.length; i++) if (dist(pts[i - 1], pts[i]) > diag * 0.08) return null;
   return { points: pts, bounds: { minX, minY, maxX, maxY } };
 }

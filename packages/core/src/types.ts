@@ -4,6 +4,11 @@ export type RawMessage = {
   data: unknown;
   /** ms desde el inicio del stream (replay) o epoch ms (live). */
   ts: number;
+  /**
+   * Epoch ms de la muestra, cuando el mensaje sale de un lote con reloj propio (`Position.z`, `CarData.z`).
+   * `ts` queda corrido por la demora del lote; para alinear telemetría con posiciones vale este.
+   */
+  utc?: number;
 };
 
 /** Fuente en vivo. El replay no es un stream: lo maneja `ReplayPlayer` sobre la lista completa de mensajes. */
@@ -55,6 +60,11 @@ export interface DriverRow {
   xy: [number, number] | null;
   onTrack: boolean;
   lapState: LapState;
+  /**
+   * Mini-sectores de la vuelta en curso, uno por sector: código de estado de cada uno
+   * (0 sin pasar, 2048 sin mejora, 2049 mejor personal, 2051 mejor absoluto, 2064 calle de boxes).
+   */
+  minis: number[][];
   /**
    * Clasificación: margen respecto del corte de la parte en curso, en segundos.
    * Para quien pasa, cuánto podría empeorar antes de quedar afuera; para quien está afuera,

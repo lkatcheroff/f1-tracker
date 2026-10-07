@@ -4,6 +4,20 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildIndex,
+  buildTelemetry,
+  bestLap,
+  currentLap,
+  cutDrivers,
+  deltaSeries,
+  lapPool,
+  packTelemetry,
+  resolveRef,
+  rivalOf,
+  sectorTimes,
+  unpackTelemetry,
+  type OrderRow,
+  type SessionTelemetry,
+  type TelemetryLap,
   deepMerge,
   findOutline,
   parseGap,
@@ -115,7 +129,7 @@ const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../.
 const HAS_FIXTURE = existsSync(path.join(FIXTURE, "TimingData.jsonStream"));
 const TOPICS = [
   "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "TimingStats", "LapCount",
-  "SessionStatus", "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z",
+  "SessionStatus", "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z", "CarData.z",
 ];
 
 describe.skipIf(!HAS_FIXTURE)("StateEngine contra la fixture", () => {
@@ -296,5 +310,186 @@ describe.skipIf(!HAS_FIXTURE)("señales para el mapa", () => {
     expect(stateAt("00:56:00.000").drivers.every((d) => d.lapState === "pit" || d.lapState === null || d.lapState === "out" || d.lapState === "lap")).toBe(true);
     const racing = stateAt("01:20:30.000").drivers.filter((d) => !d.stopped);
     expect(racing.every((d) => ["lap", "green", "purple"].includes(d.lapState!))).toBe(true);
+  });
+});
+
+describe.skipIf(!HAS_FIXTURE)("telemetría y mini-sectores", () => {
+  let messages: RawMessage[];
+  let tel: SessionTelemetry;
+  beforeAll(() => {
+    const raw: RawMessage[] = [];
+    for (const t of TOPICS) raw.push(...parseJsonStream(t, readFileSync(path.join(FIXTURE, `${t}.jsonStream`), "utf8")));
+    messages = prepareMessages(raw);
+    tel = buildTelemetry(messages, findOutline(messages))!;
+  }, 60_000);
+
+  const lap = (driver: string, n: number) => tel.laps.find((l) => l.d === driver && l.n === n)!;
+
+  it("normaliza CarData.z en una muestra por mensaje, con los canales verificados", () => {
+    const cars = messages.filter((m) => m.topic === "CarData");
+    expect(cars.length).toBeGreaterThan(30_000);
+    const [speed, rpm, gear, throttle, brake] = (cars[3000].data as Record<string, number[]>)["63"];
+    expect(speed).toBeLessThanOrEqual(340);
+    expect(rpm).toBeLessThanOrEqual(14_000);
+    expect(gear).toBeLessThanOrEqual(8);
+    expect(throttle).toBeLessThanOrEqual(100);
+    expect([0, 1]).toContain(brake);
+    expect(cars[3000].utc).toBeGreaterThan(Date.parse("2026-09-26T10:00:00Z"));
+  });
+
+  it("el mensaje CarData no altera el estado de la sesión", () => {
+    const engine = new StateEngine();
+    for (const m of messages.slice(0, 20_000)) engine.apply(m);
+    expect(engine.snapshot().topics["CarData"]?.count).toBeGreaterThan(0);
+    expect(engine.snapshot().drivers.length).toBe(22);
+  });
+
+  it("muestra los mini-sectores de la vuelta en curso", () => {
+    const engine = new StateEngine();
+    const ts = parseStreamTs("01:20:30.000");
+    for (let i = 0; i < messages.length && messages[i].ts <= ts; i++) engine.apply(messages[i]);
+    const s = engine.snapshot(ts);
+    const pia = s.drivers.find((d) => d.tla === "PIA")!;
+    expect(pia.minis).toHaveLength(3);
+    expect(pia.minis.every((m) => m.length >= 6)).toBe(true);
+    const codes = new Set(pia.minis.flat());
+    for (const c of codes) expect([0, 2048, 2049, 2051, 2064]).toContain(c);
+    expect(pia.minis[0].some((c) => c !== 0)).toBe(true); // ya pasó por el sector 1
+    expect(pia.minis[2].length).toBeGreaterThanOrEqual(6); // el 3 también viene en la lista, aunque falte cruzar la meta
+  });
+
+  it("arma la telemetría de las vueltas lanzadas, con el tiempo oficial", () => {
+    expect(tel.length).toBeGreaterThan(5800);
+    expect(tel.length).toBeLessThan(6100);
+    expect(tel.laps.length).toBeGreaterThan(900);
+    const l = lap("63", 14);
+    expect(l.kind).toBe("flying");
+    expect(l.tyre).toBe("MEDIUM");
+    expect(l.t).toHaveLength(tel.grid);
+    expect(l.t[0]).toBe(0);
+    expect(l.t[l.t.length - 1]).toBe(l.ms);
+    expect(l.t.every((x, i) => i === 0 || x >= l.t[i - 1])).toBe(true);
+    expect(Math.max(...l.v)).toBeGreaterThan(300);
+    expect(Math.max(...l.th)).toBe(100);
+    expect(new Set(l.br)).toEqual(new Set([0, 1]));
+    expect(Math.max(...l.g)).toBe(8);
+  });
+
+  it("marca como boxes las vueltas de entrada y de salida, y descarta la de largada", () => {
+    expect(new Set(tel.laps.map((l) => l.kind))).toEqual(new Set(["flying", "in", "out"]));
+    expect(tel.laps.some((l) => l.n === 1)).toBe(false);
+    // RUS paró dos veces. La vuelta de entrada de la segunda parada (bajo Safety Car, V36) se descarta porque
+    // el cronometraje oficial no coincide con lo medido: preferimos perder la vuelta a mostrar un tiempo dudoso.
+    const rus = tel.laps.filter((l) => l.d === "63" && l.kind !== "flying").map((l) => `${l.n}:${l.kind}`);
+    expect(rus).toEqual(["31:in", "32:out", "37:out"]);
+  });
+
+  it("calcula los sectores desde la traza y suman el tiempo de vuelta", () => {
+    const l = lap("63", 14);
+    const sec = sectorTimes(l, tel.marks)!;
+    expect(sec.reduce((a, b) => a + b, 0)).toBeCloseTo(l.ms, 5);
+    // sectores de una vuelta lanzada en Bakú: ~38 s, ~44 s y ~25 s
+    expect(sec[0] / 1000).toBeGreaterThan(36);
+    expect(sec[0] / 1000).toBeLessThan(41);
+    expect(sec[1] / 1000).toBeGreaterThan(42);
+    expect(sec[1] / 1000).toBeLessThan(47);
+    expect(sec[2] / 1000).toBeGreaterThan(24);
+    expect(sec[2] / 1000).toBeLessThan(27);
+  });
+
+  it("la diferencia al final de la vuelta es la diferencia de tiempos oficial", () => {
+    const a = lap("63", 14);
+    const b = lap("81", 14);
+    const d = deltaSeries(a, b);
+    expect(d[0]).toBe(0);
+    expect(d[d.length - 1]).toBeCloseTo((a.ms - b.ms) / 1000, 3);
+    expect(deltaSeries(a, a).every((x) => x === 0)).toBe(true);
+  });
+
+  it("sigue la vuelta en curso: solo ve lo recorrido hasta ahora", () => {
+    const l = lap("63", 14);
+    const mid = l.s + 40_000;
+    const cur = currentLap(tel, "63", mid)!;
+    expect(cur.lap.n).toBe(14);
+    expect(l.t[cur.upto]).toBeLessThanOrEqual(40_000);
+    expect(l.t[cur.upto + 1]).toBeGreaterThan(40_000);
+    expect(currentLap(tel, "63", l.e + 1)?.lap.n).not.toBe(14);
+    expect(currentLap(tel, "63", 0)).toBeNull();
+  });
+
+  it("sin spoilers, la mejor vuelta de referencia es la mejor hasta ese momento", () => {
+    const order: OrderRow[] = [{ num: "63", tla: "RUS", team: "Mercedes", knockedOut: false, retired: false }];
+    const ctx = { tel, now: lap("63", 14).s + 30_000, spoilerFree: true, part: null, through: null, order };
+    const pool = lapPool(ctx);
+    expect(pool.every((l) => l.e <= ctx.now)).toBe(true);
+    const ref = resolveRef(ctx, lap("63", 14), { kind: "best" });
+    expect(ref.lap).toBe(bestLap(pool));
+    // con spoilers apagados entra todo, y la mejor es la de toda la carrera (1:44.916 de RUS)
+    const all = resolveRef({ ...ctx, spoilerFree: false }, lap("63", 14), { kind: "best" });
+    expect(all.lap!.ms).toBe(Math.min(...tel.laps.filter((l) => l.kind === "flying").map((l) => l.ms)));
+    expect(all.lap!.ms).toBeLessThanOrEqual(ref.lap!.ms);
+  });
+
+  it("ida y vuelta por el archivo conserva las vueltas", () => {
+    const back = unpackTelemetry(packTelemetry(tel));
+    expect(back.laps).toHaveLength(tel.laps.length);
+    const a = lap("63", 14);
+    const b = back.laps.find((l) => l.d === "63" && l.n === 14)!;
+    expect(b.t).toEqual(a.t);
+    expect(b.v).toEqual(a.v);
+    expect(b.br).toEqual(a.br);
+    expect(b.r[100]).toBeCloseTo(a.r[100], -2); // las rpm se guardan redondeadas a la decena
+  });
+});
+
+describe("referencias de comparación", () => {
+  const mk = (d: string, n: number, ms: number, part: number | null, kind: TelemetryLap["kind"] = "flying"): TelemetryLap => ({
+    d, n, s: n * 100_000, e: n * 100_000 + ms, ms, kind, part, tyre: "SOFT", age: 1,
+    t: [0, ms / 2, ms], v: [0, 0, 0], th: [0, 0, 0], br: [0, 0, 0], g: [1, 1, 1], r: [0, 0, 0],
+  });
+  const tel: SessionTelemetry = {
+    v: 1, length: 5000, grid: 3, marks: [0.3, 0.7],
+    laps: [mk("1", 3, 90_000, 2), mk("1", 4, 91_000, 2), mk("2", 3, 90_500, 2), mk("3", 3, 89_900, 2), mk("3", 2, 95_000, 1), mk("4", 3, 92_000, 2, "out")],
+  };
+  const order: OrderRow[] = [
+    { num: "3", tla: "AAA", team: "Alfa", knockedOut: false, retired: false },
+    { num: "1", tla: "BBB", team: "Beta", knockedOut: false, retired: false },
+    { num: "2", tla: "CCC", team: "Beta", knockedOut: false, retired: false },
+    { num: "4", tla: "DDD", team: "Delta", knockedOut: false, retired: false },
+  ];
+  const ctx = { tel, now: 1e9, spoilerFree: true, part: 2, through: 2, order };
+
+  it("el corte son el último que pasa y el primero que queda afuera", () => {
+    const { lastIn, firstOut } = cutDrivers(order, 2);
+    expect(lastIn?.tla).toBe("BBB");
+    expect(firstOut?.tla).toBe("CCC");
+    expect(cutDrivers(order, null)).toEqual({ lastIn: null, firstOut: null });
+    expect(cutDrivers(order.map((d) => (d.num === "1" ? { ...d, knockedOut: true } : d)), 2).lastIn?.tla).toBe("CCC");
+  });
+
+  it("compara con el corte usando la mejor vuelta de esa parte", () => {
+    const a = tel.laps[0];
+    expect(resolveRef(ctx, a, { kind: "cut-in" }).lap).toBe(tel.laps[0]); // BBB: su mejor de Q2 es la V3 (90.000)
+    expect(resolveRef(ctx, a, { kind: "cut-out" }).lap).toBe(tel.laps[2]); // CCC
+    expect(resolveRef({ ...ctx, part: 1 }, a, { kind: "cut-out" }).missing).toMatch(/todavía no marcó/);
+    expect(resolveRef({ ...ctx, through: null }, a, { kind: "cut-in" }).missing).toBeDefined();
+  });
+
+  it("ignora las vueltas de boxes al buscar la mejor y compara con otro piloto o con la anterior", () => {
+    const a = tel.laps[1]; // BBB, V4
+    expect(resolveRef(ctx, a, { kind: "best" }).lap).toBe(tel.laps[3]);
+    expect(resolveRef(ctx, a, { kind: "own" }).lap).toBe(tel.laps[0]);
+    expect(resolveRef(ctx, a, { kind: "prev" }).lap).toBe(tel.laps[0]);
+    expect(resolveRef(ctx, tel.laps[0], { kind: "prev" }).missing).toBeDefined();
+    expect(resolveRef(ctx, a, { kind: "driver", driver: "4" }).missing).toBeDefined(); // solo tiene una vuelta de boxes
+    expect(resolveRef(ctx, a, { kind: "driver", driver: "3", lap: 2 }).lap).toBe(tel.laps[4]);
+  });
+
+  it("encuentra al compañero y a los autos de al lado", () => {
+    expect(rivalOf(order, "1", "teammate")?.tla).toBe("CCC");
+    expect(rivalOf(order, "1", "ahead")?.tla).toBe("AAA");
+    expect(rivalOf(order, "1", "behind")?.tla).toBe("CCC");
+    expect(rivalOf(order, "3", "ahead")).toBeNull();
+    expect(rivalOf(order, "4", "teammate")).toBeNull();
   });
 });

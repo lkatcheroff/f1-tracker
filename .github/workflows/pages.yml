@@ -25,7 +25,8 @@ env:
   # Las más viejas siguen disponibles en el sitio, cargadas desde OpenF1.
   MIRROR_MAX_SESSIONS: "40"
   # OpenF1 limita los pedidos: se procesan de a pocas sesiones nuevas por corrida.
-  MIRROR_MAX_NEW_PER_RUN: "5"
+  # Cada sesión lleva ~55 pedidos con telemetría (límite: 30 por minuto).
+  MIRROR_MAX_NEW_PER_RUN: "10"
 
 jobs:
   build:

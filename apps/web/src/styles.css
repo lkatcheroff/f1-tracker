@@ -476,6 +476,34 @@ aside {
 .sector {
   font-size: 13px;
 }
+.minis {
+  display: flex;
+  gap: 1px;
+  height: 4px;
+  margin-top: 3px;
+  min-width: 54px;
+}
+.minis i {
+  flex: 1;
+  min-width: 3px;
+  border-radius: 1px;
+  background: var(--line);
+}
+.minis .m-yellow {
+  background: var(--t-plain);
+}
+.minis .m-green {
+  background: var(--t-pb);
+}
+.minis .m-purple {
+  background: var(--t-ob);
+}
+.minis .m-pit {
+  background: var(--ink-3);
+}
+.row-out .minis i:not(.m-none) {
+  opacity: 0.45;
+}
 .tyre {
   display: flex;
   align-items: center;
@@ -735,6 +763,112 @@ aside {
 }
 .chart h3 {
   margin-bottom: 2px;
+}
+/* --- telemetría --- */
+.tel-wrap {
+  padding: 0 16px 28px;
+}
+.tel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tel-head h3 {
+  margin: 0;
+}
+.tel-controls,
+.tel-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 10px;
+}
+.btn-small {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.btn-on {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.tel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  margin: 14px 0 4px;
+}
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.tel-delta {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.d-loss {
+  color: var(--red);
+}
+.d-gain {
+  color: var(--green);
+}
+.tel-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 6px;
+}
+@media (max-width: 1080px) {
+  .tel-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tel-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 10px 0 2px;
+}
+.tel-chart {
+  width: 100%;
+}
+.tel-side {
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 8px;
+}
+.tel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.tel-table th {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.tel-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tel-table .num {
+  text-align: right;
+}
+.tel-diff td {
+  font-weight: 700;
+  border-bottom: none;
 }
 .chart-note {
   margin: 0 0 8px;

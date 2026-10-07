@@ -33,6 +33,13 @@ function slot(): Promise<void> {
   return next;
 }
 
+/** Error de HTTP con su código, para decidir si vale reintentar o partir el pedido. */
+class HttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
 async function get(endpoint: string, params: Record<string, string | number>): Promise<Row[]> {
   // OpenF1 usa operadores en la clave (`date>...`), así que la query se arma a mano.
   const qs = Object.entries(params)
@@ -42,17 +49,43 @@ async function get(endpoint: string, params: Record<string, string | number>): P
     await slot();
     const res = await fetch(`${BASE}${endpoint}?${qs}`, { signal: AbortSignal.timeout(120_000) });
     if (res.status === 404) return [];
-    if (res.status === 429 && attempt < 3) {
+    // 429 (límite de pedidos) y 5xx son pasajeros: se reintenta con espera creciente.
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) {
       await sleep(5000 * (attempt + 1));
       continue;
     }
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`OpenF1 respondió HTTP ${res.status} en ${endpoint}${detail ? `: ${detail.slice(0, 160)}` : ""}`);
+      throw new HttpError(res.status, `OpenF1 respondió HTTP ${res.status} en ${endpoint}${detail ? `: ${detail.slice(0, 160)}` : ""}`);
     }
     const body = await res.json();
     return Array.isArray(body) ? body : [];
   }
+}
+
+/**
+ * Pide un endpoint pesado (`location`, `car_data`) para un rango de fechas.
+ * A veces OpenF1 rechaza con 422 ("demasiados datos de una vez") un pedido que otro día acepta:
+ * se reintenta una vez y, si insiste, se parte el rango en dos mitades hasta que entre.
+ */
+async function getRange(endpoint: string, params: Record<string, string | number>, from: number, to: number): Promise<Row[]> {
+  const iso = (t: number) => new Date(t).toISOString();
+  const one = (a: number, b: number) => get(endpoint, { ...params, "date>": iso(a), "date<": iso(b) });
+  const walk = async (a: number, b: number, retried: boolean): Promise<Row[]> => {
+    try {
+      return await one(a, b);
+    } catch (err) {
+      if (!(err instanceof HttpError) || err.status !== 422) throw err;
+      if (!retried) {
+        await sleep(3000);
+        return walk(a, b, true);
+      }
+      if (b - a < 5 * 60_000) throw err;
+      const mid = Math.round((a + b) / 2);
+      return [...(await walk(a, mid, true)), ...(await walk(mid, b, true))];
+    }
+  };
+  return walk(from, to, false);
 }
 
 // --- traducción al formato del feed ---
@@ -84,6 +117,8 @@ interface OpenF1Data {
   results: Row[];
   /** Posiciones aplanadas de a cuatro: nº de auto, epoch ms, x, y. */
   location: number[];
+  /** Telemetría aplanada de a siete: nº de auto, epoch ms, velocidad, rpm, marcha, acelerador, freno. Vacía si no se pidió. */
+  car: number[];
 }
 
 export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
@@ -219,9 +254,22 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       lapStart.set(`${num}:${r.lap_number}`, start);
       lapStarts.push({ ts: start, lap: r.lap_number });
       if (r.is_pit_out_lap) line(start, num, { PitOut: true });
+      // Mini-sectores: al empezar la vuelta vuelven a cero y se completan repartidos a lo largo de cada sector
+      // (OpenF1 da el estado final de cada uno, no cuándo se cruzó; el reparto parejo es una aproximación).
+      const segs = [r.segments_sector_1, r.segments_sector_2, r.segments_sector_3];
+      line(start, num, {
+        Sectors: Object.fromEntries(segs.flatMap((sg, i) => (Array.isArray(sg) ? [[i, { Segments: sg.map(() => ({ Status: 0 })) }]] : []))),
+      });
       let t = start;
       [r.duration_sector_1, r.duration_sector_2, r.duration_sector_3].forEach((v, i) => {
         if (typeof v !== "number") return;
+        const sg = segs[i];
+        if (Array.isArray(sg)) {
+          sg.forEach((status: unknown, j: number) => {
+            if (typeof status !== "number") return;
+            line(Math.round(t + (v * 1000 * (j + 1)) / sg.length), num, { Sectors: { [i]: { Segments: { [j]: { Status: status } } } } });
+          });
+        }
         t += v * 1000;
         events.push({ ts: t, num, lap: r.lap_number, kind: "sector", i, v });
       });
@@ -392,14 +440,27 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     });
   }
 
-  // Posiciones: una muestra por auto cada ~260 ms; se agrupan en mensajes `Position` de 250 ms.
+  // Posiciones y telemetría: una muestra por auto cada ~260 ms; se agrupan en mensajes de 250 ms.
+  // Cada entrada lleva al final cuánto se corre su muestra respecto del mensaje (negativo), para no perder
+  // la precisión de tiempo que necesita la telemetría.
   const buckets = new Map<number, Row>();
   for (let i = 0; i < d.location.length; i += 4) {
-    const b = Math.floor((d.location[i + 1] - t0) / 250);
+    const ts = d.location[i + 1] - t0;
+    const b = Math.floor(ts / 250);
     if (!buckets.has(b)) buckets.set(b, {});
-    buckets.get(b)![d.location[i]] = [d.location[i + 2], d.location[i + 3], 1];
+    buckets.get(b)![d.location[i]] = [d.location[i + 2], d.location[i + 3], 1, Math.round(ts - (b + 1) * 250)];
   }
   for (const [b, entries] of buckets) push("Position", (b + 1) * 250, entries);
+
+  const carBuckets = new Map<number, Row>();
+  for (let i = 0; i < d.car.length; i += 7) {
+    const ts = d.car[i + 1] - t0;
+    const b = Math.floor(ts / 250);
+    if (!carBuckets.has(b)) carBuckets.set(b, {});
+    const [speed, rpm, gear, throttle, brake] = d.car.slice(i + 2, i + 7);
+    carBuckets.get(b)![d.car[i]] = [speed, rpm, gear, Math.min(throttle, 100), brake > 0 ? 1 : 0, Math.round(ts - (b + 1) * 250)];
+  }
+  for (const [b, entries] of carBuckets) push("CarData", (b + 1) * 250, entries);
 
   return out;
 }
@@ -435,8 +496,11 @@ export async function findOpenF1Session(startUtc: string): Promise<OpenF1Session
   return { key: s.session_key, endUtc: new Date(s.date_end).toISOString() };
 }
 
-/** Baja la sesión entera de OpenF1 y la devuelve como mensajes del feed de F1 (sin normalizar ni ordenar). */
-export async function loadOpenF1Session(startUtc: string, onStep: (s: string) => void): Promise<RawMessage[]> {
+/**
+ * Baja la sesión entera de OpenF1 y la devuelve como mensajes del feed de F1 (sin normalizar ni ordenar).
+ * `withCar` suma la telemetría (`car_data`): otros 20 pedidos, así que solo se pide cuando hace falta.
+ */
+export async function loadOpenF1Session(startUtc: string, onStep: (s: string) => void, opts: { withCar?: boolean } = {}): Promise<RawMessage[]> {
   onStep("buscando la sesión en OpenF1");
   const session = await findSession(startUtc);
   const key = session.session_key;
@@ -468,15 +532,15 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
     if (t > last) last = t;
   }
   for (const r of raceControl) last = Math.max(last, Date.parse(r.date));
-  const from = new Date(first - 3 * 60_000).toISOString();
-  const to = new Date(last + 3 * 60_000).toISOString();
+  const from = first - 3 * 60_000;
+  const to = last + 3 * 60_000;
   let done = 0;
   const location: number[] = [];
   const queue = [...drivers];
   await Promise.all(
     Array.from({ length: 3 }, async () => {
       for (let drv = queue.shift(); drv; drv = queue.shift()) {
-        const rows = await get("location", { session_key: key, driver_number: drv.driver_number, "date>": from, "date<": to });
+        const rows = await getRange("location", { session_key: key, driver_number: drv.driver_number }, from, to);
         // Se guardan aplanadas: son ~25.000 filas por auto y no hace falta retener los objetos.
         for (const r of rows) location.push(r.driver_number, Date.parse(r.date), r.x, r.y);
         onStep(`bajando posiciones de OpenF1 (${++done}/${drivers.length})`);
@@ -484,8 +548,23 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
     }),
   );
 
+  const car: number[] = [];
+  if (opts.withCar) {
+    done = 0;
+    const carQueue = [...drivers];
+    await Promise.all(
+      Array.from({ length: 3 }, async () => {
+        for (let drv = carQueue.shift(); drv; drv = carQueue.shift()) {
+          const rows = await getRange("car_data", { session_key: key, driver_number: drv.driver_number }, from, to);
+          for (const r of rows) car.push(r.driver_number, Date.parse(r.date), r.speed ?? 0, r.rpm ?? 0, r.n_gear ?? 0, r.throttle ?? 0, r.brake ?? 0);
+          onStep(`bajando telemetría de OpenF1 (${++done}/${drivers.length})`);
+        }
+      }),
+    );
+  }
+
   onStep("procesando");
-  return adaptOpenF1({ session, meeting: meetings[0], drivers, laps, intervals, position, stints, pit, raceControl, weather, results, location });
+  return adaptOpenF1({ session, meeting: meetings[0], drivers, laps, intervals, position, stints, pit, raceControl, weather, results, location, car });
 }
 
 /** Calendario del año según OpenF1, en el mismo formato que el del archivo de F1 (sin `path`). */

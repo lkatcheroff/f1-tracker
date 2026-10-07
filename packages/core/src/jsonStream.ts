@@ -33,6 +33,10 @@ export function decodeZ(b64: string): unknown {
   return JSON.parse(strFromU8(inflateSync(bytes)));
 }
 
+interface CarBatch {
+  Entries: { Utc: string; Cars: Record<string, { Channels: Record<string, number> }> }[];
+}
+
 interface PositionBatch {
   Position: { Timestamp: string; Entries: Record<string, { Status: string; X: number; Y: number; Z: number }> }[];
 }
@@ -41,7 +45,10 @@ interface PositionBatch {
  * Deja los mensajes listos para el StateEngine.
  * - `Position.z` trae varias muestras (~5 Hz) por mensaje: se abre en un mensaje `Position` por muestra,
  *   repartidas hacia atrás desde el ts del lote según sus timestamps internos.
- * - `CarData.z` queda fuera del MVP: se descarta (el Recorder guarda el crudo antes de este paso).
+ * - `CarData.z` hace lo mismo y deja un mensaje `CarData` por muestra, con `[velocidad, rpm, marcha, acelerador, freno]`
+ *   por auto. Canales verificados contra una carrera 2026: 2 velocidad (km/h), 0 rpm, 3 marcha, 4 acelerador
+ *   (0 a 104, se recorta a 100) y 5 freno (0 o 100+). No aparece el canal 45 (DRS): ya no hay DRS en 2026.
+ * Ambos llevan `utc`, el reloj de la muestra, para poder alinear posiciones con telemetría.
  */
 export function normalizeMessage(msg: RawMessage): RawMessage[] {
   if (msg.topic === "Position.z") {
@@ -52,10 +59,24 @@ export function normalizeMessage(msg: RawMessage): RawMessage[] {
     return samples.map((s) => ({
       topic: "Position",
       ts: Math.max(0, msg.ts - (lastUtc - Date.parse(s.Timestamp))),
+      utc: Date.parse(s.Timestamp),
       data: s.Entries,
     }));
   }
-  if (msg.topic === "CarData.z") return [];
+  if (msg.topic === "CarData.z") {
+    const batch = (typeof msg.data === "string" ? decodeZ(msg.data) : msg.data) as CarBatch;
+    const entries = batch?.Entries ?? [];
+    if (!entries.length) return [];
+    const lastUtc = Date.parse(entries[entries.length - 1].Utc);
+    return entries.map((e) => {
+      const cars: Record<string, number[]> = {};
+      for (const num in e.Cars) {
+        const ch = e.Cars[num].Channels;
+        cars[num] = [ch[2] ?? 0, ch[0] ?? 0, ch[3] ?? 0, Math.min(ch[4] ?? 0, 100), (ch[5] ?? 0) > 0 ? 1 : 0];
+      }
+      return { topic: "CarData", ts: Math.max(0, msg.ts - (lastUtc - Date.parse(e.Utc))), utc: Date.parse(e.Utc), data: cars };
+    });
+  }
   return [msg];
 }
 
