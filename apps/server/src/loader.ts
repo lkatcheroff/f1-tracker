@@ -1,7 +1,19 @@
-import { buildIndex, buildTelemetry, findOutline, type LoadedSession, packTelemetry, prepareMessages, type RawMessage } from "@f1/core";
+import {
+  buildIndex,
+  buildInsights,
+  buildTelemetry,
+  type DataSourceKind,
+  findOutline,
+  type LoadedSession,
+  packTelemetry,
+  prepareMessages,
+  type RawMessage,
+} from "@f1/core";
 import { loadStaticSession } from "./archive";
 import { loadOpenF1Session } from "./openf1";
 import { loadRecording } from "./recorder";
+
+const ORIGIN: Record<string, DataSourceKind> = { static: "official", openf1: "openf1", rec: "recording" };
 
 const cache = new Map<string, Promise<LoadedSession>>();
 const MAX_CACHED = 2;
@@ -28,7 +40,16 @@ export function loadSession(source: string, onStep: (s: string) => void): Promis
     const messages = prepareMessages(await loadRaw(source, onStep));
     if (!messages.length) throw new Error("la sesión no tiene datos");
     onStep("indexando");
-    return { source, messages, index: buildIndex(messages), outline: findOutline(messages) };
+    const origin = ORIGIN[source.slice(0, source.indexOf(":"))] ?? "official";
+    onStep("analizando la sesión");
+    return {
+      source,
+      messages,
+      index: buildIndex(messages),
+      outline: findOutline(messages),
+      origin,
+      insights: buildInsights(messages, { source: origin }),
+    };
   })();
   cache.set(source, p);
   p.catch(() => cache.delete(source));

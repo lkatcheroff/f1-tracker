@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import {
   buildIndex,
+  buildInsights,
   type ClientCommand,
   findOutline,
   type LoadedSession,
@@ -30,12 +31,21 @@ async function load(source: string, dataBase: string, onStep: (s: string) => voi
     if (!res.ok) throw new Error(`no se pudo bajar la sesión (HTTP ${res.status})`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     onStep("procesando");
-    return unpackSession(bytes, source);
+    const session = unpackSession(bytes, source);
+    onStep("analizando la sesión");
+    return { ...session, insights: buildInsights(session.messages, { source: session.origin ?? "openf1" }) };
   }
   if (kind === "openf1") {
     const messages = prepareMessages(await loadOpenF1Session(ref, onStep));
-    onStep("indexando");
-    return { source, messages, index: buildIndex(messages), outline: findOutline(messages) };
+    onStep("analizando la sesión");
+    return {
+      source,
+      messages,
+      index: buildIndex(messages),
+      outline: findOutline(messages),
+      origin: "openf1",
+      insights: buildInsights(messages, { source: "openf1" }),
+    };
   }
   throw new Error("esta fuente necesita el server local");
 }

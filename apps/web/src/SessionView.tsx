@@ -1,10 +1,14 @@
+import { neutralAt, visible } from "@f1/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controls } from "./Controls";
 import { useCircuit } from "./circuit";
+import { EventPanel } from "./EventPanel";
+import { jumpTarget, neighbour, useEventFilter, useHighWater } from "./events";
 import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
 import { type ChartSeries, GapChart, SERIES_COLORS } from "./GapChart";
 import { LivePanel } from "./LivePanel";
 import { RaceControl } from "./RaceControl";
+import { RaceState } from "./RaceState";
 import { TelemetryPanel } from "./TelemetryPanel";
 import { Tower } from "./Tower";
 import { TrackMap } from "./TrackMap";
@@ -66,16 +70,51 @@ export function SessionView({ target }: { target: Target }) {
     store.set(`f1t:pos:${target.source}`, { time: Math.round(playback.time) });
   }, [target, playback]);
 
-  // Atajos: espacio = play/pausa, flechas = ±5 s.
+  // Eventos: la compuerta de spoilers decide qué se ve. La lista muestra lo ya ocurrido; las marcas de la barra,
+  // con "Sin spoilers", llegan solo hasta el punto más lejano que ya se vio.
+  const insights = t.insights;
+  const filter = useEventFilter();
+  const time = playback?.time ?? 0;
+  const { highWater, reset: resetHighWater } = useHighWater(source, playback ? playback.time : null);
+  const limit = spoilerFree ? Math.max(highWater, time) : Number.POSITIVE_INFINITY;
+  const happened = useMemo(() => (insights ? visible(insights.events, time) : []), [insights, time]);
+  const marked = useMemo(
+    () => (insights ? visible(insights.events, limit).filter((e) => filter.set.has(e.kind)) : []),
+    [insights, limit, filter.set],
+  );
+  const neutralMarks = useMemo(
+    () => (insights && filter.set.has("neutralization") ? neutralAt(insights.neutral, limit) : []),
+    [insights, limit, filter.set],
+  );
+  const jump = useCallback(
+    (e: { seekTs: number }) => {
+      send({ type: "seek", ts: jumpTarget(e as never) });
+      send({ type: "play" });
+    },
+    [send],
+  );
+
+  // Atajos: espacio = play/pausa, flechas = ±5 s, J / K = evento anterior / siguiente.
   const pb = useRef(playback);
   pb.current = playback;
+  const nav = useRef(marked);
+  nav.current = marked;
   useEffect(() => {
     if (target.mode !== "replay") return;
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(el.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName);
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       const p = pb.current;
       if (!p) return;
+      const key = e.key.toLowerCase();
+      if (key === "j" || key === "k") {
+        const hit = neighbour(nav.current, p.time, key === "k" ? "next" : "prev");
+        if (hit) jump(hit);
+        e.preventDefault();
+        return;
+      }
+      if (el.tagName === "BUTTON") return; // Espacio y flechas actúan sobre el botón enfocado
       if (e.code === "Space") send({ type: p.paused ? "play" : "pause" });
       else if (e.code === "ArrowLeft") send({ type: "seek", ts: p.time - 5000 });
       else if (e.code === "ArrowRight") send({ type: "seek", ts: p.time + 5000 });
@@ -84,7 +123,7 @@ export function SessionView({ target }: { target: Target }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [target.mode, send]);
+  }, [target.mode, send, jump]);
 
   const circuit = useCircuit(snap?.session?.circuitKey, snap?.session?.year);
   const track = snap ? TRACK_STATUS[snap.track.status] : undefined;
@@ -152,6 +191,17 @@ export function SessionView({ target }: { target: Target }) {
           send={send}
           spoilerFree={spoilerFree}
           onSpoilerFree={setSpoilerFree}
+          marks={
+            insights
+              ? {
+                  events: marked,
+                  neutral: neutralMarks,
+                  limitTs: Number.isFinite(limit) ? limit : index.duration,
+                  drivers: insights.drivers,
+                  onJump: jump,
+                }
+              : undefined
+          }
         />
       )}
       {live && <LivePanel live={live} now={snap?.time ?? Date.now()} />}
@@ -176,6 +226,18 @@ export function SessionView({ target }: { target: Target }) {
               instant={(playback?.speed ?? 1) > 2}
               missingReason={noPositions}
             />
+            {insights?.isRace && <RaceState snap={snap} insights={insights} events={happened} />}
+            {insights && (
+              <EventPanel
+                insights={insights}
+                events={happened}
+                filter={filter}
+                startTs={insights.startTs}
+                spoilerFree={spoilerFree}
+                onJump={jump}
+                onResetHighWater={() => resetHighWater(time)}
+              />
+            )}
             <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />
             <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />
           </aside>

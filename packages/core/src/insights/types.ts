@@ -101,6 +101,13 @@ export interface DriverInfo {
   color: string;
 }
 
+/** Un tramo con Safety Car, Safety Car virtual o bandera roja. `to: null` = sigue abierto. */
+export interface NeutralSpan {
+  from: number;
+  to: number | null;
+  kind: "SC" | "VSC" | "RED";
+}
+
 export interface SessionInsights {
   isRace: boolean;
   /** largada (SessionStatus → Started) y bandera a cuadros, si ya ocurrieron */
@@ -113,6 +120,8 @@ export interface SessionInsights {
   laps: LapRow[];
   stints: Stint[];
   events: InsightEvent[];
+  /** franjas neutralizadas, para sombrearlas en la línea de tiempo */
+  neutral: NeutralSpan[];
   /** todos los cambios de posición, con su clase (los sobrepasos son los `onTrack`) */
   changes: PositionChange[];
   dataQuality: DataQuality;

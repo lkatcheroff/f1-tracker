@@ -1,4 +1,5 @@
 import { StateEngine } from "./engine";
+import type { DataSourceKind, SessionInsights } from "./insights";
 import type { ClientCommand, ServerMessage } from "./protocol";
 import { PlaybackClock } from "./replay";
 import type { RawMessage, SessionIndex, TrackOutline } from "./types";
@@ -9,6 +10,10 @@ export interface LoadedSession {
   messages: RawMessage[];
   index: SessionIndex;
   outline: TrackOutline | null;
+  /** de dónde salen los datos; decide qué se rotula como aproximado */
+  origin?: DataSourceKind;
+  /** el análisis de la sesión (eventos, vueltas, stints) */
+  insights?: SessionInsights;
 }
 
 export const SPEEDS = [0.5, 1, 2, 4, 8, 16];
@@ -35,8 +40,8 @@ export class ReplayPlayer {
   }
 
   opened(): ServerMessage {
-    const { source, index, outline } = this.session;
-    return { type: "opened", mode: "replay", source, index, outline };
+    const { source, index, outline, insights } = this.session;
+    return { type: "opened", mode: "replay", source, index, outline, insights: insights ?? null };
   }
 
   handle(cmd: ClientCommand, wall: number): void {

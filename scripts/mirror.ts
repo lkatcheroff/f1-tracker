@@ -88,7 +88,7 @@ async function mirrorSession(s: SessionEntry, file: string, telFile: string): Pr
   const messages = prepareMessages(raw);
   if (!messages.some((m) => m.topic === "TimingData")) throw new Error("sin TimingData");
   const outline = findOutline(messages);
-  const bytes = packSession({ messages, index: buildIndex(messages), outline });
+  const bytes = packSession({ messages, index: buildIndex(messages), outline, origin: s.path ? "official" : "openf1" });
 
   const tel = buildTelemetry(messages, outline);
   const telBytes = tel ? packTelemetry(tel) : null;

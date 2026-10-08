@@ -29,7 +29,7 @@ const MIN_VERSION = 2;
  * Empaqueta una sesión ya preparada en un único archivo gzip, para publicarla como archivo estático.
  * Las posiciones van en forma compacta (`[x, y, enPista]` por auto), que el engine también entiende.
  */
-export function packSession(session: Omit<LoadedSession, "source">): Uint8Array {
+export function packSession(session: Omit<LoadedSession, "source" | "insights">): Uint8Array {
   const topics: string[] = [];
   // La telemetría va en su propio archivo (`packTelemetry`): acá pesaría el doble y casi nadie la abre.
   const messages = session.messages
@@ -47,12 +47,16 @@ export function packSession(session: Omit<LoadedSession, "source">): Uint8Array 
       }
       return [t, m.ts, data];
     });
-  return gzipSync(strToU8(JSON.stringify({ v: VERSION, topics, messages, index: session.index, outline: session.outline })), { level: 9 });
+  return gzipSync(
+    strToU8(JSON.stringify({ v: VERSION, topics, messages, index: session.index, outline: session.outline, origin: session.origin })),
+    { level: 9 },
+  );
 }
 
 export function unpackSession(bytes: Uint8Array, source: string): LoadedSession {
   const d = JSON.parse(strFromU8(gunzipSync(bytes)));
   if (typeof d.v !== "number" || d.v < MIN_VERSION || d.v > VERSION) throw new Error(`formato de sesión desconocido (v${d.v})`);
   const messages: RawMessage[] = d.messages.map(([t, ts, data]: [number, number, unknown]) => ({ topic: d.topics[t], ts, data }));
-  return { source, messages, index: d.index, outline: d.outline };
+  // Las sesiones publicadas antes de que se guardara el origen salieron todas de OpenF1.
+  return { source, messages, index: d.index, outline: d.outline, origin: d.origin ?? "openf1" };
 }

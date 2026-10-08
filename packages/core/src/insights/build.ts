@@ -11,6 +11,7 @@ import type {
   DriverInfo,
   InsightEvent,
   LapRow,
+  NeutralSpan,
   PositionChange,
   SessionInsights,
   Stint,
@@ -127,9 +128,9 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
   const orderAt: { ts: number; order: string[] }[] = [];
 
   // estado de pista
-  const neutral: Span[] = [];
+  const neutral: (Span & { kind: NeutralSpan["kind"] })[] = [];
   const yellow: Span[] = [];
-  let neutralKind: string | null = null;
+  let neutralKind: NeutralSpan["kind"] | null = null;
   let trackYellow = false;
   const yellowSectors = new Set<number>();
   const penaltyMsgs: { ts: number; drivers: string[] }[] = [];
@@ -141,10 +142,10 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
     else if (!active && open) yellow[yellow.length - 1].to = ts;
   };
 
-  const setNeutral = (ts: number, kind: string | null) => {
+  const setNeutral = (ts: number, kind: NeutralSpan["kind"] | null) => {
     const open = neutral.length > 0 && neutral[neutral.length - 1].to === null;
-    if (kind && !open) neutral.push({ from: ts, to: null });
-    else if (!kind && open) neutral[neutral.length - 1].to = ts;
+    if (open && (!kind || kind !== neutral[neutral.length - 1].kind)) neutral[neutral.length - 1].to = ts;
+    if (kind && (!open || kind !== neutral[neutral.length - 1].kind)) neutral.push({ from: ts, to: null, kind });
     if (kind && kind !== neutralKind) {
       events.push({
         id: "",
@@ -452,11 +453,18 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
   const stints = [...stintMap.values()].sort((a, b) => +a.driver - +b.driver || a.index - b.index);
   const laps: LapRow[] = rows.map(({ startLaps: _s, ...r }) => r);
 
-  // compuesto con el que sale cada parada = el de la vuelta de salida siguiente
+  // De cada parada: el compuesto que monta (el de la vuelta de salida siguiente) y en qué puesto vuelve a pista.
+  // El puesto se lee `LAP_SETTLE_MS` después de la salida, cuando el feed ya actualizó el orden, y ese es el
+  // instante en que la parada queda resuelta.
   for (const e of events) {
     if (e.kind !== "pit") continue;
     const next = rows.find((r) => r.driver === e.drivers[0] && r.outLap && r.endTs >= e.ts);
     if (next?.tyre) e.data.compound = next.tyre.compound;
+    const settle = e.ts + P.LAP_SETTLE_MS;
+    const order = [...orderAt].reverse().find((o) => o.ts <= settle)?.order;
+    const idx = order ? order.indexOf(e.drivers[0]) : -1;
+    e.data.rejoinPos = idx >= 0 ? idx + 1 : null;
+    e.ts = settle;
   }
 
   // --- cambios de posición ---
@@ -561,5 +569,5 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
   events.sort((a, b) => a.ts - b.ts || a.id.localeCompare(b.id));
 
   const quality: DataQuality = { source: src, hasPositions, hasTelemetry, approximations: QUALITY[src] };
-  return { isRace, startTs, endTs, drivers, grid, final, laps, stints, events, changes, dataQuality: quality };
+  return { isRace, startTs, endTs, drivers, grid, final, laps, stints, events, neutral, changes, dataQuality: quality };
 }

@@ -1,4 +1,14 @@
-import type { ClientCommand, GapSample, LiveState, PlaybackState, ServerMessage, SessionIndex, Snapshot, TrackOutline } from "@f1/core";
+import type {
+  ClientCommand,
+  GapSample,
+  LiveState,
+  PlaybackState,
+  ServerMessage,
+  SessionIndex,
+  SessionInsights,
+  Snapshot,
+  TrackOutline,
+} from "@f1/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { connect, type Target, type Transport } from "./transport";
 
@@ -12,6 +22,7 @@ export interface TrackerState {
   playback: PlaybackState | null;
   live: LiveState | null;
   index: SessionIndex | null;
+  insights: SessionInsights | null;
   outline: TrackOutline | null;
   /** cambia cada vez que se modifica `history` */
   histVersion: number;
@@ -25,6 +36,7 @@ const INITIAL: TrackerState = {
   playback: null,
   live: null,
   index: null,
+  insights: null,
   outline: null,
   histVersion: 0,
 };
@@ -53,6 +65,7 @@ export function useTracker(target: Target) {
             loading: m.mode === "live" ? "esperando datos" : null,
             error: null,
             index: m.mode === "replay" ? m.index : null,
+            insights: m.mode === "replay" ? m.insights : null,
             outline: m.mode === "replay" ? m.outline : null,
             histVersion: s.histVersion + 1,
           }));

@@ -1,4 +1,4 @@
-import type { SessionInsights } from "./types";
+import type { NeutralSpan, SessionInsights } from "./types";
 
 /**
  * La compuerta de spoilers: la única función que decide qué se puede mostrar en el instante `now`.
@@ -7,6 +7,11 @@ import type { SessionInsights } from "./types";
  */
 export function visible<T>(items: T[], now: number, ts: (item: T) => number = (item) => (item as { ts: number }).ts): T[] {
   return items.filter((item) => ts(item) <= now);
+}
+
+/** Las franjas neutralizadas tal como se conocen en `now`: de una abierta se sabe cuándo empezó, no cuándo termina. */
+export function neutralAt(spans: NeutralSpan[], now: number): NeutralSpan[] {
+  return spans.filter((s) => s.from <= now).map((s) => (s.to !== null && s.to <= now ? s : { ...s, to: null }));
 }
 
 /** El análisis tal como se conoce en `now`: nada posterior. */
@@ -25,6 +30,7 @@ export function insightsAt(insights: SessionInsights, now: number): SessionInsig
     laps,
     stints,
     events: visible(insights.events, now),
+    neutral: neutralAt(insights.neutral, now),
     changes: visible(insights.changes, now),
   };
 }

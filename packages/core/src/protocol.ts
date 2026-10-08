@@ -1,3 +1,4 @@
+import type { SessionInsights } from "./insights";
 import type { GapSample, SessionIndex, Snapshot, TopicHealth, TrackOutline } from "./types";
 
 /** Protocolo del WebSocket propio entre server y web. */
@@ -33,7 +34,7 @@ export interface LiveState {
 
 export type ServerMessage =
   | { type: "loading"; step: string }
-  | { type: "opened"; mode: "replay"; source: string; index: SessionIndex; outline: TrackOutline | null }
+  | { type: "opened"; mode: "replay"; source: string; index: SessionIndex; outline: TrackOutline | null; insights: SessionInsights | null }
   | { type: "opened"; mode: "live" }
   | { type: "outline"; outline: TrackOutline }
   | { type: "snapshot"; snap: Snapshot; playback?: PlaybackState; live?: LiveState }

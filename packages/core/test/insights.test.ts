@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildInsights, insightsAt, PARAMS, parseSteward, type RawMessage, type SessionInsights, visible } from "../src";
+import { buildInsights, insightsAt, neutralAt, PARAMS, parseSteward, type RawMessage, type SessionInsights, visible } from "../src";
 import { RaceBuilder } from "./builders";
 
 const T0 = 10_000;
@@ -337,9 +337,9 @@ describe("otros eventos", () => {
     expect(pit[0]).toMatchObject({
       drivers: ["1"],
       seekTs: 188_000,
-      ts: 209_000,
+      ts: 209_000 + PARAMS.LAP_SETTLE_MS,
       lap: 2,
-      data: { laneSec: 21, stops: 1, compound: "SOFT" },
+      data: { laneSec: 21, stops: 1, compound: "SOFT", rejoinPos: 1 },
     });
   });
 
@@ -451,6 +451,31 @@ describe("compuerta de spoilers", () => {
     expect(insightsAt(full, 399_000).final).toEqual({});
     expect(insightsAt(full, 399_000).endTs).toBeNull();
     expect(Object.keys(insightsAt(full, 401_000).final)).toHaveLength(4);
+  });
+});
+
+describe("franjas neutralizadas", () => {
+  const r = started(3);
+  r.at(100_000).safetyCar();
+  r.at(150_000).allClear();
+  r.at(200_000).safetyCar("VSC");
+  r.at(220_000).redFlag();
+  r.at(260_000).allClear();
+  const ins = run(r);
+
+  it("cada neutralización es una franja con su tipo; una bandera roja durante un Safety Car abre otra", () => {
+    expect(ins.neutral).toEqual([
+      { from: 100_000, to: 150_000, kind: "SC" },
+      { from: 200_000, to: 220_000, kind: "VSC" },
+      { from: 220_000, to: 260_000, kind: "RED" },
+    ]);
+  });
+
+  it("de una franja abierta se conoce cuándo empezó, no cuándo termina", () => {
+    expect(insightsAt(ins, 120_000).neutral).toEqual([{ from: 100_000, to: null, kind: "SC" }]);
+    expect(insightsAt(ins, 160_000).neutral).toEqual([{ from: 100_000, to: 150_000, kind: "SC" }]);
+    expect(insightsAt(ins, 50_000).neutral).toEqual([]);
+    expect(neutralAt(ins.neutral, 230_000).at(-1)).toEqual({ from: 220_000, to: null, kind: "RED" });
   });
 });
 

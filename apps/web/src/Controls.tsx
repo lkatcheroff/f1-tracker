@@ -1,5 +1,7 @@
-import type { ClientCommand, PlaybackState, SessionIndex, Snapshot } from "@f1/core";
+import type { ClientCommand, InsightEvent, NeutralSpan, PlaybackState, SessionIndex, Snapshot } from "@f1/core";
 import { useEffect, useState } from "react";
+import { EventTrack } from "./EventTrack";
+import { makeXOf } from "./events";
 import { fmtDuration, store } from "./format";
 
 const SPEEDS = [0.5, 1, 2, 4, 8, 16];
@@ -12,9 +14,17 @@ interface Props {
   send: (cmd: ClientCommand) => void;
   spoilerFree: boolean;
   onSpoilerFree: (v: boolean) => void;
+  /** marcas de eventos bajo la barra (ya filtradas y con la compuerta de spoilers aplicada) */
+  marks?: {
+    events: InsightEvent[];
+    neutral: NeutralSpan[];
+    limitTs: number;
+    drivers: Parameters<typeof EventTrack>[0]["drivers"];
+    onJump: (e: InsightEvent) => void;
+  };
 }
 
-export function Controls({ source, playback, index, snap, send, spoilerFree, onSpoilerFree }: Props) {
+export function Controls({ source, playback, index, snap, send, spoilerFree, onSpoilerFree, marks }: Props) {
   const offsetKey = `f1t:offset:${source}`;
   /** segundos que el tracker va corrido respecto del video después de sincronizar */
   const [offset, setOffset] = useState(() => store.get(offsetKey, 0));
@@ -143,19 +153,22 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
           Offset
           <input type="number" step="0.5" value={offset} onChange={(e) => editOffset(e.target.valueAsNumber)} />s
         </label>
-        <input
-          className="scrub"
-          type="range"
-          min={byLap ? 1 : 0}
-          max={sliderMax}
-          step={byLap ? 1 : 1000}
-          value={drag ?? sliderNow}
-          onChange={(e) => setDrag(Number(e.target.value))}
-          onPointerUp={commit}
-          onKeyUp={commit}
-          onBlur={commit}
-          aria-label={byLap ? "Vuelta" : "Posición en la sesión"}
-        />
+        <div className="scrub-wrap">
+          <input
+            className="scrub"
+            type="range"
+            min={byLap ? 1 : 0}
+            max={sliderMax}
+            step={byLap ? 1 : 1000}
+            value={drag ?? sliderNow}
+            onChange={(e) => setDrag(Number(e.target.value))}
+            onPointerUp={commit}
+            onKeyUp={commit}
+            onBlur={commit}
+            aria-label={byLap ? "Vuelta" : "Posición en la sesión"}
+          />
+          {marks && <EventTrack xOf={makeXOf(index, byLap)} {...marks} />}
+        </div>
         {drag !== null && <span className="muted small">{byLap ? `vuelta ${drag}` : fmtDuration(drag)}</span>}
       </div>
     </section>
