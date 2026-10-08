@@ -148,7 +148,7 @@ const TOPICS = [
   "CarData.z",
 ];
 
-describe.skipIf(!HAS_FIXTURE)("StateEngine contra la fixture", () => {
+describe.skipIf(!HAS_FIXTURE)("[requiere datos reales] StateEngine contra la fixture", () => {
   let messages: RawMessage[];
 
   beforeAll(() => {
@@ -270,7 +270,7 @@ describe.skipIf(!HAS_FIXTURE)("StateEngine contra la fixture", () => {
   });
 });
 
-describe.skipIf(!HAS_FIXTURE)("señales para el mapa", () => {
+describe.skipIf(!HAS_FIXTURE)("[requiere datos reales] señales para el mapa", () => {
   let messages: RawMessage[];
   beforeAll(() => {
     const raw: RawMessage[] = [];
@@ -333,7 +333,7 @@ describe.skipIf(!HAS_FIXTURE)("señales para el mapa", () => {
   });
 });
 
-describe.skipIf(!HAS_FIXTURE)("telemetría y mini-sectores", () => {
+describe.skipIf(!HAS_FIXTURE)("[requiere datos reales] telemetría y mini-sectores", () => {
   let messages: RawMessage[];
   let tel: SessionTelemetry;
   beforeAll(() => {

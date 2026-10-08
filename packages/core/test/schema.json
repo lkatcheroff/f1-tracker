@@ -1,0 +1,572 @@
+{
+ "note": "Forma de los mensajes del feed (rutas y tipos). Sin valores. Se genera con `npm run fixture:schema`.",
+ "topics": {
+  "CarData": {
+   "$": [
+    "object"
+   ],
+   "$.*": [
+    "array"
+   ],
+   "$.*.*": [
+    "number"
+   ]
+  },
+  "DriverList": {
+   "$": [
+    "object"
+   ],
+   "$.*": [
+    "object"
+   ],
+   "$.*.BroadcastName": [
+    "string"
+   ],
+   "$.*.FirstName": [
+    "string"
+   ],
+   "$.*.FullName": [
+    "string"
+   ],
+   "$.*.HeadshotUrl": [
+    "string"
+   ],
+   "$.*.LastName": [
+    "string"
+   ],
+   "$.*.Line": [
+    "number"
+   ],
+   "$.*.PublicIdRight": [
+    "string"
+   ],
+   "$.*.RacingNumber": [
+    "string"
+   ],
+   "$.*.Reference": [
+    "string"
+   ],
+   "$.*.TeamColour": [
+    "string"
+   ],
+   "$.*.TeamName": [
+    "string"
+   ],
+   "$.*.Tla": [
+    "string"
+   ]
+  },
+  "ExtrapolatedClock": {
+   "$": [
+    "object"
+   ],
+   "$.Extrapolating": [
+    "boolean"
+   ],
+   "$.Remaining": [
+    "string"
+   ],
+   "$.Utc": [
+    "string"
+   ]
+  },
+  "Heartbeat": {
+   "$": [
+    "object"
+   ],
+   "$.Utc": [
+    "string"
+   ]
+  },
+  "LapCount": {
+   "$": [
+    "object"
+   ],
+   "$.CurrentLap": [
+    "number"
+   ],
+   "$.TotalLaps": [
+    "number"
+   ]
+  },
+  "Position": {
+   "$": [
+    "object"
+   ],
+   "$.*": [
+    "object"
+   ],
+   "$.*.Status": [
+    "string"
+   ],
+   "$.*.X": [
+    "number"
+   ],
+   "$.*.Y": [
+    "number"
+   ],
+   "$.*.Z": [
+    "number"
+   ]
+  },
+  "RaceControlMessages": {
+   "$": [
+    "object"
+   ],
+   "$.Messages": [
+    "array",
+    "object"
+   ],
+   "$.Messages.*": [
+    "object"
+   ],
+   "$.Messages.*.Category": [
+    "string"
+   ],
+   "$.Messages.*.Flag": [
+    "string"
+   ],
+   "$.Messages.*.Lap": [
+    "number"
+   ],
+   "$.Messages.*.Message": [
+    "string"
+   ],
+   "$.Messages.*.Mode": [
+    "string"
+   ],
+   "$.Messages.*.RacingNumber": [
+    "string"
+   ],
+   "$.Messages.*.Scope": [
+    "string"
+   ],
+   "$.Messages.*.Sector": [
+    "number"
+   ],
+   "$.Messages.*.Status": [
+    "string"
+   ],
+   "$.Messages.*.Utc": [
+    "string"
+   ]
+  },
+  "SessionInfo": {
+   "$": [
+    "object"
+   ],
+   "$.ArchiveStatus": [
+    "object"
+   ],
+   "$.ArchiveStatus.Status": [
+    "string"
+   ],
+   "$.EndDate": [
+    "string"
+   ],
+   "$.GmtOffset": [
+    "string"
+   ],
+   "$.Key": [
+    "number"
+   ],
+   "$.Meeting": [
+    "object"
+   ],
+   "$.Meeting.Circuit": [
+    "object"
+   ],
+   "$.Meeting.Circuit.Key": [
+    "number"
+   ],
+   "$.Meeting.Circuit.ShortName": [
+    "string"
+   ],
+   "$.Meeting.Country": [
+    "object"
+   ],
+   "$.Meeting.Country.Code": [
+    "string"
+   ],
+   "$.Meeting.Country.Key": [
+    "number"
+   ],
+   "$.Meeting.Country.Name": [
+    "string"
+   ],
+   "$.Meeting.Key": [
+    "number"
+   ],
+   "$.Meeting.Location": [
+    "string"
+   ],
+   "$.Meeting.Name": [
+    "string"
+   ],
+   "$.Meeting.Number": [
+    "number"
+   ],
+   "$.Meeting.OfficialName": [
+    "string"
+   ],
+   "$.Name": [
+    "string"
+   ],
+   "$.Number": [
+    "number"
+   ],
+   "$.Path": [
+    "string"
+   ],
+   "$.SessionStatus": [
+    "string"
+   ],
+   "$.StartDate": [
+    "string"
+   ],
+   "$.Type": [
+    "string"
+   ]
+  },
+  "SessionStatus": {
+   "$": [
+    "object"
+   ],
+   "$.Started": [
+    "string"
+   ],
+   "$.Status": [
+    "string"
+   ]
+  },
+  "TimingAppData": {
+   "$": [
+    "object"
+   ],
+   "$.Lines": [
+    "object"
+   ],
+   "$.Lines.*": [
+    "object"
+   ],
+   "$.Lines.*.GridPos": [
+    "string"
+   ],
+   "$.Lines.*.Line": [
+    "number"
+   ],
+   "$.Lines.*.RacingNumber": [
+    "string"
+   ],
+   "$.Lines.*.Stints": [
+    "array",
+    "object"
+   ],
+   "$.Lines.*.Stints.*": [
+    "object"
+   ],
+   "$.Lines.*.Stints.*.Compound": [
+    "string"
+   ],
+   "$.Lines.*.Stints.*.LapFlags": [
+    "number"
+   ],
+   "$.Lines.*.Stints.*.LapNumber": [
+    "number"
+   ],
+   "$.Lines.*.Stints.*.LapTime": [
+    "string"
+   ],
+   "$.Lines.*.Stints.*.New": [
+    "string"
+   ],
+   "$.Lines.*.Stints.*.StartLaps": [
+    "number"
+   ],
+   "$.Lines.*.Stints.*.TotalLaps": [
+    "number"
+   ],
+   "$.Lines.*.Stints.*.TyresNotChanged": [
+    "string"
+   ]
+  },
+  "TimingData": {
+   "$": [
+    "object"
+   ],
+   "$.CutOffPercentage": [
+    "string"
+   ],
+   "$.CutOffTime": [
+    "string"
+   ],
+   "$.Lines": [
+    "object"
+   ],
+   "$.Lines.*": [
+    "object"
+   ],
+   "$.Lines.*.BestLapTime": [
+    "object"
+   ],
+   "$.Lines.*.BestLapTime._deleted": [
+    "array"
+   ],
+   "$.Lines.*.BestLapTime._deleted.*": [
+    "string"
+   ],
+   "$.Lines.*.BestLapTime.Lap": [
+    "number"
+   ],
+   "$.Lines.*.BestLapTime.Value": [
+    "string"
+   ],
+   "$.Lines.*.BestLapTimes": [
+    "array",
+    "object"
+   ],
+   "$.Lines.*.BestLapTimes.*": [
+    "object"
+   ],
+   "$.Lines.*.BestLapTimes.*.Lap": [
+    "number"
+   ],
+   "$.Lines.*.BestLapTimes.*.Value": [
+    "string"
+   ],
+   "$.Lines.*.Cutoff": [
+    "boolean"
+   ],
+   "$.Lines.*.GapToLeader": [
+    "string"
+   ],
+   "$.Lines.*.InPit": [
+    "boolean"
+   ],
+   "$.Lines.*.IntervalToPositionAhead": [
+    "object"
+   ],
+   "$.Lines.*.IntervalToPositionAhead.Catching": [
+    "boolean"
+   ],
+   "$.Lines.*.IntervalToPositionAhead.Value": [
+    "string"
+   ],
+   "$.Lines.*.KnockedOut": [
+    "boolean"
+   ],
+   "$.Lines.*.LastLapTime": [
+    "object"
+   ],
+   "$.Lines.*.LastLapTime.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.LastLapTime.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.LastLapTime.Status": [
+    "number"
+   ],
+   "$.Lines.*.LastLapTime.Value": [
+    "string"
+   ],
+   "$.Lines.*.Line": [
+    "number"
+   ],
+   "$.Lines.*.NumberOfLaps": [
+    "number"
+   ],
+   "$.Lines.*.NumberOfPitStops": [
+    "number"
+   ],
+   "$.Lines.*.PitOut": [
+    "boolean"
+   ],
+   "$.Lines.*.Position": [
+    "string"
+   ],
+   "$.Lines.*.RacingNumber": [
+    "string"
+   ],
+   "$.Lines.*.Retired": [
+    "boolean"
+   ],
+   "$.Lines.*.Sectors": [
+    "array",
+    "object"
+   ],
+   "$.Lines.*.Sectors.*": [
+    "object"
+   ],
+   "$.Lines.*.Sectors.*.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Sectors.*.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Sectors.*.PreviousValue": [
+    "string"
+   ],
+   "$.Lines.*.Sectors.*.Segments": [
+    "array",
+    "object"
+   ],
+   "$.Lines.*.Sectors.*.Segments.*": [
+    "object"
+   ],
+   "$.Lines.*.Sectors.*.Segments.*.Status": [
+    "number"
+   ],
+   "$.Lines.*.Sectors.*.Status": [
+    "number"
+   ],
+   "$.Lines.*.Sectors.*.Stopped": [
+    "boolean"
+   ],
+   "$.Lines.*.Sectors.*.Value": [
+    "string"
+   ],
+   "$.Lines.*.ShowPosition": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds": [
+    "object"
+   ],
+   "$.Lines.*.Speeds.FL": [
+    "object"
+   ],
+   "$.Lines.*.Speeds.FL.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.FL.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.FL.Status": [
+    "number"
+   ],
+   "$.Lines.*.Speeds.FL.Value": [
+    "string"
+   ],
+   "$.Lines.*.Speeds.I1": [
+    "object"
+   ],
+   "$.Lines.*.Speeds.I1.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.I1.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.I1.Status": [
+    "number"
+   ],
+   "$.Lines.*.Speeds.I1.Value": [
+    "string"
+   ],
+   "$.Lines.*.Speeds.I2": [
+    "object"
+   ],
+   "$.Lines.*.Speeds.I2.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.I2.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.I2.Status": [
+    "number"
+   ],
+   "$.Lines.*.Speeds.I2.Value": [
+    "string"
+   ],
+   "$.Lines.*.Speeds.ST": [
+    "object"
+   ],
+   "$.Lines.*.Speeds.ST.OverallFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.ST.PersonalFastest": [
+    "boolean"
+   ],
+   "$.Lines.*.Speeds.ST.Status": [
+    "number"
+   ],
+   "$.Lines.*.Speeds.ST.Value": [
+    "string"
+   ],
+   "$.Lines.*.Stats": [
+    "array",
+    "object"
+   ],
+   "$.Lines.*.Stats.*": [
+    "object"
+   ],
+   "$.Lines.*.Stats.*.TimeDiffToFastest": [
+    "string"
+   ],
+   "$.Lines.*.Stats.*.TimeDifftoPositionAhead": [
+    "string"
+   ],
+   "$.Lines.*.Status": [
+    "number"
+   ],
+   "$.Lines.*.Stopped": [
+    "boolean"
+   ],
+   "$.Lines.*.TimeDiffToFastest": [
+    "string"
+   ],
+   "$.Lines.*.TimeDiffToPositionAhead": [
+    "string"
+   ],
+   "$.NoEntries": [
+    "array",
+    "object"
+   ],
+   "$.NoEntries.*": [
+    "number"
+   ],
+   "$.SessionPart": [
+    "number"
+   ],
+   "$.Withheld": [
+    "boolean"
+   ]
+  },
+  "TrackStatus": {
+   "$": [
+    "object"
+   ],
+   "$.Message": [
+    "string"
+   ],
+   "$.Status": [
+    "string"
+   ]
+  },
+  "WeatherData": {
+   "$": [
+    "object"
+   ],
+   "$.AirTemp": [
+    "string"
+   ],
+   "$.Humidity": [
+    "string"
+   ],
+   "$.Pressure": [
+    "string"
+   ],
+   "$.Rainfall": [
+    "string"
+   ],
+   "$.TrackTemp": [
+    "string"
+   ],
+   "$.WindDirection": [
+    "string"
+   ],
+   "$.WindSpeed": [
+    "string"
+   ]
+  }
+ }
+}
