@@ -129,3 +129,21 @@ Verificados contra la carrera de Bakú (fixture) y los mensajes de Race Control 
 - **Cierre de vuelta:** un delta con `NumberOfLaps` numérico, que trae en el mismo mensaje `LastLapTime`, `BestLapTime` y `Sectors[2].Value`.
 - **Sanciones y comisarios (`RaceControlMessages`):** el piloto va solo en el texto; 0 de 61 sanciones de tiempo traen `RacingNumber`. Formatos vistos: `N SECOND TIME PENALTY FOR CAR n (TLA)`, `DRIVE THROUGH PENALTY FOR CAR…`, `STOP-AND-GO PENALTY FOR CAR…`, `PENALTY SERVED - …`, `WARNING FOR CAR…`, `INCIDENT INVOLVING CAR(S) … NOTED | UNDER INVESTIGATION | WILL BE INVESTIGATED AFTER THE RACE/SPRINT | REVIEWED NO FURTHER INVESTIGATION | NO FURTHER ACTION`. Variantes: prefijo `FIA STEWARDS:` (a veces `UPDATE:`), prefijo `TURN n` o `LAP n TURN n`, varios autos (`CARS 5 (BOR), 77 (BOT) AND 10 (GAS)`), motivo (` - …`) y hora `(HH:MM:SS)` opcionales. No aparecen descalificaciones ni reprimendas en 2026.
 - **UNVERIFIED:** formato de las sanciones en sprint o clasificación más allá de lo listado; qué mensaje cierra una investigación que termina en sanción posterior (se encadena solo por piloto y motivo, no por un identificador).
+
+## 8. Presupuestos medidos y lo que sigue sin comprobar (2026-10-08)
+
+Medido en un laptop, con la carrera de Bakú (fixture, 22 pilotos):
+
+| Qué | Tiempo | Presupuesto de la spec |
+|---|---|---|
+| `buildInsights` de una carrera completa | ~137 ms | 500 ms |
+| Telemetría de una sesión (`buildTelemetry`) | ~1,4 s | sin presupuesto; corre en la Action y en el server, no en el navegador |
+
+Sigue sin comprobarse (`UNVERIFIED`):
+
+- Las condiciones de uso de OpenF1 y de MultiViewer para un sitio público. No se afirma ningún permiso: la atribución del pie y `docs/DATA_SOURCES.md` solo dicen de dónde sale cada dato.
+- El formato de los mensajes del feed en vivo durante una sesión real (ver sección del live); se probó con la pista cerrada.
+- Sanciones y comisarios fuera de las carreras de 2026 (ver sección 7).
+- Los casos de sobrepaso conocidos para los tests contra datos reales: los elige Lucas.
+
+Los tests de lo publicado (`packages/openf1/test`, `scripts/test`, `apps/server/test`) corren en CI sin red: el cliente de OpenF1 y el espejo reciben un `fetch` de mentira, y el server arma la app con una carga de sesión sintética.
