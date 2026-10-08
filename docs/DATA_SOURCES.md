@@ -2,7 +2,7 @@
 
 Qué fuente se usa para qué, qué falta con cada una y dónde están sus términos. El proyecto es personal y no oficial.
 
-> **Pendiente (Lucas):** verificar las condiciones de uso de cada servicio antes de dar por cerrado el punto. Este documento solo dice de dónde sale cada dato; **no afirma ningún permiso** que no se haya podido comprobar.
+> **Términos de uso:** no se verificaron. Decisión de Lucas (2026-10-08): es un proyecto personal de uso no masivo. Este documento solo dice de dónde sale cada dato y **no afirma ningún permiso**.
 
 | Fuente | Se usa para | Dónde corre | Términos |
 |---|---|---|---|

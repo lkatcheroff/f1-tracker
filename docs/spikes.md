@@ -141,7 +141,7 @@ Medido en un laptop, con la carrera de Bakú (fixture, 22 pilotos):
 
 Sigue sin comprobarse (`UNVERIFIED`):
 
-- Las condiciones de uso de OpenF1 y de MultiViewer para un sitio público. No se afirma ningún permiso: la atribución del pie y `docs/DATA_SOURCES.md` solo dicen de dónde sale cada dato.
+- Las condiciones de uso de OpenF1 y de MultiViewer para un sitio público (Lucas decidió no verificarlas: uso personal, no masivo). No se afirma ningún permiso: la atribución del pie y `docs/DATA_SOURCES.md` solo dicen de dónde sale cada dato.
 - El formato de los mensajes del feed en vivo durante una sesión real (ver sección del live); se probó con la pista cerrada.
 - Sanciones y comisarios fuera de las carreras de 2026 (ver sección 7).
 - Los casos de sobrepaso conocidos para los tests contra datos reales: los elige Lucas.
