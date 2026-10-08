@@ -26,6 +26,8 @@ export interface RaceBuilderOptions {
   compound?: string;
   /** inicio de la sesión, para los mensajes con hora (Race Control, Heartbeat) */
   utc0?: string;
+  /** tipo de sesión: en práctica y clasificación no hay contador de vueltas */
+  type?: "Race" | "Practice" | "Qualifying";
 }
 
 export interface SyntheticDriver {
@@ -85,10 +87,12 @@ export class RaceBuilder {
   private leaderLap = 1;
   private started = false;
   private finished = false;
+  private readonly type: "Race" | "Practice" | "Qualifying";
 
   constructor(opts: RaceBuilderOptions = {}) {
     const n = opts.drivers ?? 6;
     if (n < 2 || n > 22) throw new Error("drivers debe estar entre 2 y 22");
+    this.type = opts.type ?? "Race";
     this.drivers = syntheticDrivers(n);
     this.totalLaps = opts.laps ?? 10;
     this.utc0 = Date.parse(opts.utc0 ?? "2030-06-01T12:00:00Z");
@@ -163,8 +167,8 @@ export class RaceBuilder {
       SessionStatus: "Inactive",
       ArchiveStatus: { Status: "Generating" },
       Key: 90001,
-      Type: "Race",
-      Name: "Race",
+      Type: this.type,
+      Name: this.type,
       StartDate: this.wall(),
       EndDate: this.wall(7_200_000),
       GmtOffset: "00:00:00",
@@ -214,7 +218,7 @@ export class RaceBuilder {
         ]),
       ),
     });
-    this.emit("LapCount", { CurrentLap: 1, TotalLaps: this.totalLaps });
+    if (this.type === "Race") this.emit("LapCount", { CurrentLap: 1, TotalLaps: this.totalLaps });
     this.emit("SessionStatus", { Status: "Inactive", Started: "Inactive" });
     this.emit("TrackStatus", { Status: "1", Message: "AllClear" });
     this.emit("ExtrapolatedClock", { Utc: this.wall(), Remaining: "02:00:00", Extrapolating: false });
@@ -259,7 +263,7 @@ export class RaceBuilder {
     if (opts.gap !== undefined || opts.interval !== undefined) this.gap(num, { gap: opts.gap, interval: opts.interval });
 
     // El contador de vueltas avanza cuando el líder cruza la meta.
-    if (this.position(num) === 1 && n >= this.leaderLap && n < this.totalLaps) {
+    if (this.type === "Race" && this.position(num) === 1 && n >= this.leaderLap && n < this.totalLaps) {
       this.leaderLap = n + 1;
       this.emit("LapCount", { CurrentLap: this.leaderLap });
     }

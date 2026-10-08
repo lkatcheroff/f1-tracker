@@ -1,5 +1,6 @@
 export * from "./compare";
 export * from "./engine";
+export * from "./insights";
 export * from "./jsonStream";
 export * from "./merge";
 export * from "./pack";

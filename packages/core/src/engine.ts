@@ -18,6 +18,20 @@ import type {
 type Obj = Record<string, any>;
 type XY = [number, number];
 
+/** Lectura del estado de un piloto (`StateEngine.peekRow`). */
+export interface PeekRow {
+  position: number | null;
+  /** segundos al líder; null si va a una o más vueltas o no hay dato (el líder: 0) */
+  gapLeaderSec: number | null;
+  /** segundos al de adelante; null para el líder, para los doblados y si no hay dato */
+  intervalSec: number | null;
+  inPit: boolean;
+  retired: boolean;
+  stopped: boolean;
+  /** el neumático en uso: nº de stint, compuesto, si es nuevo y con cuántas vueltas arrancó */
+  stint: { index: number; compound: string; isNew: boolean; startLaps: number } | null;
+}
+
 interface Checkpoint {
   ts: number;
   seq: number;
@@ -248,6 +262,30 @@ export class StateEngine {
       ? { compound: stint.Compound, age: stint.TotalLaps ?? 0, isNew: String(stint.New) === "true" }
       : null;
     return { tyre, part: this.sessionPart() };
+  }
+
+  /**
+   * Estado de un piloto en este instante, para armar la tabla de vueltas (`buildInsights`): posición, diferencias
+   * con el líder y con el de adelante en segundos (null si va a una o más vueltas, o si el dato falta), boxes y el
+   * stint en curso. No cambia el estado: es una lectura.
+   */
+  peekRow(num: string): PeekRow | null {
+    const l = this.raw.TimingData?.Lines?.[num] as Obj | undefined;
+    if (!l) return null;
+    const { gap, interval } = this.gapText(l);
+    const position = toNumber(l.Position) ?? toNumber(l.Line);
+    const stints = asList<Obj>(this.raw.TimingAppData?.Lines?.[num]?.Stints);
+    const index = stints.length - 1;
+    const st = stints[index];
+    return {
+      position,
+      gapLeaderSec: parseGap(gap),
+      intervalSec: position === 1 ? null : parseGap(interval),
+      inPit: !!l.InPit,
+      retired: !!l.Retired,
+      stopped: !!l.Stopped,
+      stint: st?.Compound ? { index, compound: st.Compound, isNew: String(st.New) === "true", startLaps: st.StartLaps ?? 0 } : null,
+    };
   }
 
   /** La calle de boxes es el recorrido de un auto entre que entra (`InPit`) y sale. */
