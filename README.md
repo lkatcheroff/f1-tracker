@@ -89,15 +89,31 @@ npx vite preview --outDir apps/web/dist
 
 Los dos modos usan el mismo formato de mensajes y el mismo `StateEngine`; cambia solo la fuente.
 
-## Tests
+## Desarrollo, tests y CI
 
 ```bash
-npm run fixture   # baja la carrera de Azerbaiyán 2026 a fixtures/ (25 MB)
-npm test
-npm run typecheck
+npm run check          # tipos + lint + tests: lo que tiene que estar en verde antes de subir
+npm run format         # formatea con Biome
+npm run fixture        # baja la carrera de Azerbaiyán 2026 a fixtures/ (25 MB, solo desde una conexión hogareña)
+npm run fixture:schema # regenera packages/core/test/schema.json (la forma de los mensajes, sin valores)
 ```
 
-Los tests del engine comparan posiciones, gaps y neumáticos en cuatro momentos de esa carrera. Sin la fixture se saltean.
+**Dos tipos de tests**, con el mismo comando:
+
+- **Sintéticos (corren siempre, también en CI).** `packages/core/test/builders.ts` arma carreras inventadas (pilotos `AAA`, `BBB`…) con mensajes de la **forma real** del feed: un test de contrato verifica que todo lo que emite el builder exista en `schema.json`, que contiene solo rutas y tipos de los mensajes reales, sin valores. Así se testea sin redistribuir datos del feed.
+- **Contra la carrera real (`[requiere datos reales]`).** Validan el motor y la telemetría contra la fixture de Bakú. Se corren en local; en CI se saltean porque F1 le responde 403 a los servidores de GitHub y la fixture no se sube al repo. El resumen del job muestra cuántos se saltearon.
+
+**Jobs de `.github/workflows/pages.yml`:**
+
+| Job | Cuándo | Qué hace |
+|---|---|---|
+| `check` | push, manual y cron | Tipos siempre; lint y tests salvo en el cron |
+| `build` | push, manual y cron | Procesa las sesiones nuevas (OpenF1), arma el sitio y lo sube como artefacto si hubo cambios |
+| `deploy` | cuando `build` tiene algo para publicar | Publica en Pages. Un push solo se publica si `check` pasó |
+
+## Licencia
+
+MIT para el código (ver `LICENSE`). Los datos de tiempos que muestra son de terceros (F1, OpenF1, MultiViewer) y quedan fuera de la licencia. Proyecto personal, no oficial, sin afiliación con Formula 1.
 
 ## Diferencias con la spec
 

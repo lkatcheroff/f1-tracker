@@ -117,3 +117,15 @@ El bloqueo es por IP (o por región), no por cómo se identifica el pedido. Cons
 - La fixture de los tests solo se puede bajar desde una conexión hogareña; en la Action esos tests se saltean.
 
 En OpenF1, el campo `date` de `pit` es el instante de **salida** de boxes (coincide con `InPit: false` del feed). Con eso la calle de boxes reconstruida desde OpenF1 da los mismos extremos que la del feed oficial.
+
+## 7. Hallazgos para la v2 (2026-10-08)
+
+Verificados contra la carrera de Bakú (fixture) y los mensajes de Race Control de las 21 carreras de 2026.
+
+- **Cambios de posición:** `Position` (string) y `Line` en el delta de `TimingData`. 287 cambios en carrera, siempre de a dos o más en el mismo mensaje (114 mensajes con 2, 14 con 3 o más, ninguno con uno solo) y nunca con posiciones repetidas en un estado intermedio. 7 rebotes (vuelve a la posición anterior en menos de 4 s). Ninguno antes de la largada.
+- **Grilla:** `GridPos` en `TimingAppData` (solo el feed oficial). OpenF1 no lo emite, pero la primera `Position` del primer `TimingData` es la grilla y coincide en las dos fuentes.
+- **OpenF1 y el orden de carrera:** trae exactamente los mismos 287 cambios (mismo piloto, misma posición), con los mismos tiempos relativos. Los tiempos absolutos van corridos ~2 s contra el reloj del feed. El orden no hace falta rotularlo como aproximado; sí los retiros y el estado de pista.
+- **Después de la bandera a cuadros** hubo 2 cambios, 28 s más tarde (P7↔P8): la reclasificación por una sanción. Son parte de la clasificación final.
+- **Cierre de vuelta:** un delta con `NumberOfLaps` numérico, que trae en el mismo mensaje `LastLapTime`, `BestLapTime` y `Sectors[2].Value`.
+- **Sanciones y comisarios (`RaceControlMessages`):** el piloto va solo en el texto; 0 de 61 sanciones de tiempo traen `RacingNumber`. Formatos vistos: `N SECOND TIME PENALTY FOR CAR n (TLA)`, `DRIVE THROUGH PENALTY FOR CAR…`, `STOP-AND-GO PENALTY FOR CAR…`, `PENALTY SERVED - …`, `WARNING FOR CAR…`, `INCIDENT INVOLVING CAR(S) … NOTED | UNDER INVESTIGATION | WILL BE INVESTIGATED AFTER THE RACE/SPRINT | REVIEWED NO FURTHER INVESTIGATION | NO FURTHER ACTION`. Variantes: prefijo `FIA STEWARDS:` (a veces `UPDATE:`), prefijo `TURN n` o `LAP n TURN n`, varios autos (`CARS 5 (BOR), 77 (BOT) AND 10 (GAS)`), motivo (` - …`) y hora `(HH:MM:SS)` opcionales. No aparecen descalificaciones ni reprimendas en 2026.
+- **UNVERIFIED:** formato de las sanciones en sprint o clasificación más allá de lo listado; qué mensaje cierra una investigación que termina en sanción posterior (se encadena solo por piloto y motivo, no por un identificador).
