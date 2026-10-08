@@ -16,6 +16,7 @@
     "build:pages": "npm run build -w @f1/web -- --mode pages"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/node": "^22.0.0",
     "concurrently": "^9.0.0",
     "tsx": "^4.19.0",
