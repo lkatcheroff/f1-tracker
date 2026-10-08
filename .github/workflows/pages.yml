@@ -95,7 +95,8 @@ jobs:
         run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/pages.yml/enable"
 
   deploy:
-    needs: build
+    # Un push solo se publica si el chequeo pasó. El cron no corre los tests (el código ya pasó cuando se subió).
+    needs: [build, check]
     if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     environment:
@@ -105,8 +106,8 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  test:
-    if: github.event_name != 'schedule'
+  # `npm run check` = tipos + lint + tests. En el cron corre solo el chequeo de tipos, que es barato.
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -116,5 +117,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Los tests contra la carrera real se saltean acá: la fixture solo se puede bajar desde una conexión hogareña.
-      - run: npm test
+      - name: Lint y tests
+        if: github.event_name != 'schedule'
+        run: |
+          npm run lint
+          npm test 2>&1 | tee test.log
+      # Los tests contra la carrera real ("[requiere datos reales]") se saltean acá: la fixture solo se puede
+      # bajar desde una conexión hogareña. El resumen deja a la vista cuántos se saltearon.
+      - name: Resumen de tests
+        if: github.event_name != 'schedule'
+        run: |
+          {
+            echo "### Tests"
+            echo '```'
+            grep -E "Test Files|Tests " test.log || true
+            echo '```'
+            echo "Los bloques marcados \"[requiere datos reales]\" se saltean en CI: usan una carrera real que no se publica en el repo."
+          } >> "$GITHUB_STEP_SUMMARY"
