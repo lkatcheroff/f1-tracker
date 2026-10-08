@@ -84,7 +84,11 @@ export class StateEngine {
     if (this.checkpointEvery > 0) this.maybeCheckpoint(msg.ts);
     this.seq++;
     if (msg.ts > this.time) this.time = msg.ts;
-    const h = (this.topics[msg.topic] ??= { count: 0, lastTs: 0 });
+    let h = this.topics[msg.topic];
+    if (!h) {
+      h = { count: 0, lastTs: 0 };
+      this.topics[msg.topic] = h;
+    }
     h.count++;
     h.lastTs = msg.ts;
 
@@ -191,7 +195,8 @@ export class StateEngine {
         // Un auto que deja de transmitir (abandono en pista) pasa a 0,0: se conserva dónde quedó.
         const last = this.positions[num];
         if (last) last[2] = false;
-        this.lapBufs.get(num) && (this.lapBufs.get(num)!.dirty = true);
+        const pending = this.lapBufs.get(num);
+        if (pending) pending.dirty = true;
         continue;
       }
       this.positions[num] = [x, y, onTrack];
@@ -226,7 +231,11 @@ export class StateEngine {
       if (l?.LastLapTime?.Value) this.lapTs[num] = ts;
       const sectors = l?.Sectors;
       if (!sectors || typeof sectors !== "object") continue;
-      const st = (this.sectorTs[num] ??= []);
+      let st = this.sectorTs[num];
+      if (!st) {
+        st = [];
+        this.sectorTs[num] = st;
+      }
       for (const k in sectors) if (sectors[k]?.Value) st[+k] = ts;
     }
   }
@@ -472,7 +481,7 @@ export class StateEngine {
       yellowSectors: [...yellow].map(([sector, double]) => ({ sector, double })),
       safetyCars: SAFETY_CARS.flatMap((id) => {
         const p = this.positions[id];
-        return p && p[2] ? [{ id, xy: [p[0], p[1]] as [number, number] }] : [];
+        return p?.[2] ? [{ id, xy: [p[0], p[1]] as [number, number] }] : [];
       }),
       topics: this.topics,
     };

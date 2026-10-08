@@ -1,11 +1,11 @@
-import websocket from "@fastify/websocket";
 import type { ClientCommand, ServerMessage, SessionsResponse } from "@f1/core";
+import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { listMeetings } from "./archive";
 import { config } from "./config";
 import { loadSession, loadTelemetryFile } from "./loader";
 import { listRecordings } from "./recorder";
-import { liveHub, ReplaySession, type ClientSession } from "./sessions";
+import { type ClientSession, liveHub, ReplaySession } from "./sessions";
 
 const app = Fastify({ logger: { level: "warn" } });
 await app.register(websocket);

@@ -6,21 +6,21 @@ import {
   distanceAxis,
   indexOutline,
   lapPool,
+  type OrderRow,
   projectOnOutline,
+  type RefSpec,
   resolveRef,
   rivalOf,
-  sectorTimes,
-  type OrderRow,
-  type RefSpec,
   type SessionTelemetry,
   type Snapshot,
+  sectorTimes,
   type TelemetryLap,
   type TrackOutline,
 } from "@f1/core";
 import { useEffect, useMemo, useState } from "react";
 import type { CircuitInfo } from "./circuit";
 import { fmtDelta, fmtLapMs, fmtSecMs, store } from "./format";
-import { COLOR_A, COLOR_REF, TelChart, type Marker } from "./TelChart";
+import { COLOR_A, COLOR_REF, type Marker, TelChart } from "./TelChart";
 import { useTelemetry } from "./useTelemetry";
 
 interface Props {
@@ -44,7 +44,7 @@ export function TelemetryPanel({ source, snap, outline, circuit, spoilerFree }: 
     <section className="panel telemetry">
       <div className="tel-head">
         <h3>Telemetría y comparación</h3>
-        <button className="btn" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <button type="button" className="btn" onClick={() => setOpen(!open)} aria-expanded={open}>
           {open ? "Cerrar" : "Abrir"}
         </button>
       </div>
@@ -267,6 +267,7 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
           ] as const
         ).map(([who, label]) => (
           <button
+            type="button"
             key={who}
             className={`btn btn-small ${spec.kind === "driver" && spec.driver === rivals[who]?.num ? "btn-on" : ""}`}
             disabled={!rivals[who]}
@@ -277,6 +278,7 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
           </button>
         ))}
         <button
+          type="button"
           className={`btn btn-small ${refSpec === null ? "btn-on" : ""}`}
           onClick={() => setRefSpec(null)}
           title="Vuelve a la referencia que corresponde: el corte en clasificación, la mejor de la sesión en el resto"

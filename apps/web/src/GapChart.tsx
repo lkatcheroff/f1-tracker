@@ -1,5 +1,5 @@
 import type { GapSample } from "@f1/core";
-import { memo, useEffect, useRef, type RefObject } from "react";
+import { memo, type RefObject, useEffect, useRef } from "react";
 import uPlot from "uplot";
 import { fmtDuration } from "./format";
 

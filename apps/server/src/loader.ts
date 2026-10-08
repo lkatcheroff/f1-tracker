@@ -1,4 +1,4 @@
-import { buildIndex, buildTelemetry, findOutline, packTelemetry, prepareMessages, type LoadedSession, type RawMessage } from "@f1/core";
+import { buildIndex, buildTelemetry, findOutline, type LoadedSession, packTelemetry, prepareMessages, type RawMessage } from "@f1/core";
 import { loadStaticSession } from "./archive";
 import { loadOpenF1Session } from "./openf1";
 import { loadRecording } from "./recorder";

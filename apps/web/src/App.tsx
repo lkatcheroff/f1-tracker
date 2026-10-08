@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { store } from "./format";
 import { Home } from "./Home";
 import { SessionView } from "./SessionView";
-import { store } from "./format";
 import { STATIC, type Target } from "./transport";
 
 function parseHash(): Target | null {

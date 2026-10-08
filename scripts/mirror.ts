@@ -10,16 +10,16 @@ import {
   buildIndex,
   buildTelemetry,
   findOutline,
+  type MeetingEntry,
   PACK_VERSION,
   packSession,
   packTelemetry,
   parseJsonStream,
   prepareMessages,
-  REPLAY_TOPICS,
-  TELEMETRY_VERSION,
-  type MeetingEntry,
   type RawMessage,
+  REPLAY_TOPICS,
   type SessionEntry,
+  TELEMETRY_VERSION,
 } from "@f1/core";
 import { listOpenF1Meetings, loadOpenF1Session } from "@f1/openf1";
 

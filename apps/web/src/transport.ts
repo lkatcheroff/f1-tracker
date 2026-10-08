@@ -1,10 +1,10 @@
 import {
-  TELEMETRY_VERSION,
-  unpackTelemetry,
   type ClientCommand,
   type ServerMessage,
   type SessionsResponse,
   type SessionTelemetry,
+  TELEMETRY_VERSION,
+  unpackTelemetry,
 } from "@f1/core";
 
 /**

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useCircuit } from "./circuit";
 import { Controls } from "./Controls";
+import { useCircuit } from "./circuit";
 import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
-import { GapChart, SERIES_COLORS, type ChartSeries } from "./GapChart";
+import { type ChartSeries, GapChart, SERIES_COLORS } from "./GapChart";
 import { LivePanel } from "./LivePanel";
 import { RaceControl } from "./RaceControl";
 import { TelemetryPanel } from "./TelemetryPanel";

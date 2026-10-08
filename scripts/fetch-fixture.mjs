@@ -1,8 +1,8 @@
 // Baja una sesión real del archivo estático de F1 a fixtures/ (la usan los tests del core).
 // Uso: node scripts/fetch-fixture.mjs [path-de-sesión]
 import { mkdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BASE = "https://livetiming.formula1.com/static/";
 const sessionPath = process.argv[2] ?? "2026/2026-09-26_Azerbaijan_Grand_Prix/2026-09-26_Race/";

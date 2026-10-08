@@ -1,4 +1,4 @@
-import { ReplayPlayer, StateEngine, type ClientCommand, type LoadedSession, type ServerMessage, type TrackOutline } from "@f1/core";
+import { type ClientCommand, type LoadedSession, ReplayPlayer, type ServerMessage, StateEngine, type TrackOutline } from "@f1/core";
 import { LiveSource } from "./liveSource";
 import { Recorder } from "./recorder";
 
@@ -75,7 +75,8 @@ class LiveHub {
   }
 
   private startSource(): void {
-    const source = (this.source = new LiveSource());
+    const source = new LiveSource();
+    this.source = source;
     this.engine = new StateEngine({ epochTs: true });
     this.sessionPath = "";
     this.timer = setInterval(() => this.tick(), SNAPSHOT_MS);

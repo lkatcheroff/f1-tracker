@@ -1,0 +1,31 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["**", "!**/node_modules", "!**/dist", "!package-lock.json", "!docs", "!**/*.md", "!**/*.svg"]
+  },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always", "trailingCommas": "all" } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        // El feed de F1 es JSON sin tipar y se lee con `!` después de comprobar que el dato está: es una decisión de estilo del código.
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        // Por la misma razón, los mensajes del feed se tipan como `Record<string, any>` a propósito.
+        "noExplicitAny": "off",
+        // Las listas con índice como clave son posicionales (mini-sectores, filas de una tabla fija): el índice es la identidad.
+        "noArrayIndexKey": "off"
+      },
+      "correctness": {
+        // Varios efectos dependen de un subconjunto a propósito (p. ej. recrear un gráfico solo cuando cambian las series).
+        // Queda como aviso para que se vea, sin frenar el chequeo.
+        "useExhaustiveDependencies": "warn"
+      }
+    }
+  },
+  "css": { "linter": { "enabled": false } }
+}

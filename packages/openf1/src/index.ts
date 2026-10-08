@@ -257,7 +257,9 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     | { kind: "part"; part: number }
   );
   const events: Ev[] = [];
-  partStarts.slice(1).forEach((ts, i) => events.push({ ts, num: 0, lap: 0, kind: "part", part: i + 2 }));
+  partStarts.slice(1).forEach((ts, i) => {
+    events.push({ ts, num: 0, lap: 0, kind: "part", part: i + 2 });
+  });
   const lapStart = new Map<string, number>();
   const lapStarts: { ts: number; lap: number }[] = [];
   for (const [num, rows] of byDriver) {
@@ -394,7 +396,10 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     push("LapCount", 0, { CurrentLap: 1, TotalLaps: totalLaps });
     let current = 1;
     for (const l of lapStarts.sort((a, b) => a.ts - b.ts)) {
-      if (l.lap > current) push("LapCount", l.ts, { CurrentLap: (current = l.lap) });
+      if (l.lap > current) {
+        current = l.lap;
+        push("LapCount", l.ts, { CurrentLap: current });
+      }
     }
     const first = lapStarts.find((l) => l.lap === 1);
     if (first) push("SessionStatus", first.ts, { Status: "Started" });
@@ -421,9 +426,14 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     const text = String(r.message ?? "").toUpperCase();
     const track = (status: string, message: string) => push("TrackStatus", ts, { Status: status, Message: message });
     if (r.category === "SafetyCar") {
-      if (text.includes("VIRTUAL") && text.includes("DEPLOYED")) (sc = true), track("6", "VSCDeployed");
-      else if (text.includes("VIRTUAL") && text.includes("ENDING")) track("7", "VSCEnding");
-      else if (text.includes("DEPLOYED")) (sc = true), track("4", "SCDeployed");
+      if (text.includes("VIRTUAL") && text.includes("DEPLOYED")) {
+        sc = true;
+        track("6", "VSCDeployed");
+      } else if (text.includes("VIRTUAL") && text.includes("ENDING")) track("7", "VSCEnding");
+      else if (text.includes("DEPLOYED")) {
+        sc = true;
+        track("4", "SCDeployed");
+      }
     } else if (r.flag === "RED") {
       aborted = true;
       track("5", "Red");

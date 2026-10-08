@@ -30,4 +30,5 @@ const num = (s: unknown): number | null => {
   const n = typeof s === "number" ? s : parseFloat(String(s ?? ""));
   return Number.isFinite(n) ? n : null;
 };
+
 export { num as toNumber };

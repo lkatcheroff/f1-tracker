@@ -1,4 +1,4 @@
-import { parseGap, parseLapTime, type DriverRow, type RaceControlMessage, type Snapshot, type TrackOutline } from "@f1/core";
+import { type DriverRow, parseGap, parseLapTime, type RaceControlMessage, type Snapshot, type TrackOutline } from "@f1/core";
 import { memo, useMemo } from "react";
 import type { CircuitInfo } from "./circuit";
 import { centroidOf, longStraights, nearestIndex, outwardNormal, projector, slicePoints } from "./mapGeometry";
@@ -342,7 +342,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
       <ul className="map-legend">
         {base && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M8,0V10" className="map-finish" strokeWidth="3" />
               <path d="M8,0V10" className="map-finish-check" strokeWidth="3" strokeDasharray="2.5 2.5" />
             </svg>
@@ -351,7 +351,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {(base?.s2 || base?.s3) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M8,1V9" className="map-sector" strokeWidth="1.5" />
             </svg>
             Inicio de sector
@@ -364,7 +364,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {base?.pit && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M1,5H15" className="pit-lane" strokeWidth="1.6" strokeDasharray="3 2" />
             </svg>
             Calle de boxes, con entrada y salida
@@ -372,7 +372,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {!!base?.straights.length && !neutralised && (
           <li title="El feed de F1 no publica zonas de sobrepaso. Se marcan las rectas más largas del trazado, donde suelen darse.">
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M1,5H15" className="track-straight" strokeWidth="4" />
             </svg>
             Recta larga: zona típica de sobrepaso (estimada)
@@ -380,7 +380,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.leader) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4" className="car-ring ring-leader" strokeWidth="1.2" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -389,7 +389,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.attacking) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4" className="car-ring ring-attack" strokeWidth="1.2" strokeDasharray="2.4 1.4" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -398,7 +398,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.fastest) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4.4" className="car-ring ring-purple" strokeWidth="0.8" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -407,7 +407,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.state === "purple") && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4.4" className="car-ring ring-purple" strokeWidth="0.7" />
               <circle cx="8" cy="5" r="3" className="car-ring ring-purple" strokeWidth="1.1" />
               <circle cx="8" cy="5" r="1.5" fill="var(--ink-2)" />
@@ -417,7 +417,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.state === "green") && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4" className="car-ring ring-green" strokeWidth="1.2" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -426,7 +426,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.state === "out") && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="3" fill="none" stroke="var(--ink-2)" strokeWidth="1.4" />
             </svg>
             Vuelta de salida o de entrada
@@ -434,7 +434,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.cutZone) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4" className="car-ring ring-cut" strokeWidth="1.2" strokeDasharray="1.6 1.2" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -443,7 +443,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.blue) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <circle cx="8" cy="5" r="4" className="car-ring ring-blue" strokeWidth="1.2" />
               <circle cx="8" cy="5" r="2" fill="var(--ink-2)" />
             </svg>
@@ -452,7 +452,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {any((v) => v.parked) && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M5,2L11,8M11,2L5,8" stroke="var(--ink-2)" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
             Auto detenido en pista
@@ -465,7 +465,7 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
         )}
         {!!yellows.length && (
           <li>
-            <svg viewBox="0 0 16 10" className="key">
+            <svg viewBox="0 0 16 10" className="key" aria-hidden="true">
               <path d="M8,0.5L13,9.5L3,9.5Z" fill="var(--yellow)" />
             </svg>
             Bandera amarilla

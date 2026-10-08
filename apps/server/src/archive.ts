@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseJsonStream, REPLAY_TOPICS, type MeetingEntry, type RawMessage } from "@f1/core";
+import { type MeetingEntry, parseJsonStream, type RawMessage, REPLAY_TOPICS } from "@f1/core";
 import { cacheDir, config } from "./config";
 
 const REQUIRED = ["TimingData", "DriverList"];

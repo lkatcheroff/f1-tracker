@@ -266,7 +266,7 @@ function traceLap(
   for (let i = 0; i < grid; i++) {
     const ta = abs[i];
     out.t.push(Math.round(smooth[i]));
-    const c = car && car.u.length ? sampleCar(car, ta) : { v: 0, r: 0, g: 0, th: 0, br: 0 };
+    const c = car?.u.length ? sampleCar(car, ta) : { v: 0, r: 0, g: 0, th: 0, br: 0 };
     out.v.push(c.v);
     out.th.push(c.th);
     out.br.push(c.br);
@@ -313,7 +313,10 @@ export function buildTelemetry(
         const [x, y, on, dt] = Array.isArray(e) ? [e[0], e[1], !!e[2], e[3] ?? 0] : [e.X, e.Y, e.Status === "OnTrack", 0];
         if (!on || (x === 0 && y === 0)) continue;
         let s = pos.get(num);
-        if (!s) pos.set(num, (s = { u: [], x: [], y: [] }));
+        if (!s) {
+          s = { u: [], x: [], y: [] };
+          pos.set(num, s);
+        }
         s.u.push(base + dt);
         s.x.push(x);
         s.y.push(y);
@@ -326,7 +329,10 @@ export function buildTelemetry(
         if (+num >= 240) continue;
         const e = (m.data as Obj)[num] as number[];
         let s = car.get(num);
-        if (!s) car.set(num, (s = { u: [], v: [], r: [], g: [], th: [], br: [] }));
+        if (!s) {
+          s = { u: [], v: [], r: [], g: [], th: [], br: [] };
+          car.set(num, s);
+        }
         s.u.push(base + (e[5] ?? 0));
         s.v.push(e[0]);
         s.r.push(e[1]);
@@ -360,7 +366,10 @@ export function buildTelemetry(
     for (const c of closing) {
       const info = engine.peek(c.num);
       let list = events.get(c.num);
-      if (!list) events.set(c.num, (list = []));
+      if (!list) {
+        list = [];
+        events.set(c.num, list);
+      }
       list.push({
         lap: c.lap,
         ts: m.ts,

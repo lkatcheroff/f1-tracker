@@ -45,7 +45,8 @@ export class ReplayPlayer {
         if (this.clock.now(wall) < this.session.index.duration) this.clock.resume(wall);
         return;
       case "pause":
-        return this.clock.pause(wall);
+        this.clock.pause(wall);
+        return;
       case "speed":
         if (SPEEDS.includes(cmd.x)) this.clock.setSpeed(cmd.x, wall);
         return;

@@ -63,13 +63,18 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
   return (
     <section className="controls" aria-label="Controles de reproducción">
       <div className="ctl-row">
-        <button className="btn btn-icon" onClick={() => send({ type: paused ? "play" : "pause" })} title="Reproducir o pausar (Espacio)">
+        <button
+          type="button"
+          className="btn btn-icon"
+          onClick={() => send({ type: paused ? "play" : "pause" })}
+          title="Reproducir o pausar (Espacio)"
+        >
           {paused ? "▶ Reproducir" : "❚❚ Pausar"}
         </button>
-        <button className="btn" onClick={() => seek(time - 5000)} title="Retroceder 5 segundos (flecha izquierda)">
+        <button type="button" className="btn" onClick={() => seek(time - 5000)} title="Retroceder 5 segundos (flecha izquierda)">
           −5 s
         </button>
-        <button className="btn" onClick={() => seek(time + 5000)} title="Avanzar 5 segundos (flecha derecha)">
+        <button type="button" className="btn" onClick={() => seek(time + 5000)} title="Avanzar 5 segundos (flecha derecha)">
           +5 s
         </button>
         <label className="field">
@@ -113,6 +118,7 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
 
       <div className="ctl-row">
         <button
+          type="button"
           className="btn btn-primary"
           onClick={sync}
           disabled={start === null}
@@ -124,7 +130,7 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
           Ajuste fino
           <span className="btn-group">
             {[-5, -1, 1, 5].map((d) => (
-              <button key={d} className="btn" onClick={() => nudge(d)}>
+              <button type="button" key={d} className="btn" onClick={() => nudge(d)}>
                 {d > 0 ? `+${d}` : `−${-d}`} s
               </button>
             ))}

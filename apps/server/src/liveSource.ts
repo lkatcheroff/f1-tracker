@@ -1,5 +1,5 @@
-import WebSocket from "ws";
 import type { DataSource, LiveState, RawMessage } from "@f1/core";
+import WebSocket from "ws";
 import { config } from "./config";
 
 const RS = "\x1e";
@@ -58,7 +58,11 @@ export class LiveSource implements DataSource {
 
   private push(topic: string, data: unknown): void {
     const ts = Date.now();
-    const h = (this.state.topics[topic] ??= { count: 0, lastTs: 0 });
+    let h = this.state.topics[topic];
+    if (!h) {
+      h = { count: 0, lastTs: 0 };
+      this.state.topics[topic] = h;
+    }
     h.count++;
     h.lastTs = ts;
     this.queue.push({ topic, data, ts });
@@ -92,7 +96,10 @@ export class LiveSource implements DataSource {
           if (!part) continue;
           const m = JSON.parse(part);
           if (!handshaken) {
-            if (m.error) return this.fail(`handshake: ${m.error}`);
+            if (m.error) {
+              this.fail(`handshake: ${m.error}`);
+              return;
+            }
             handshaken = true;
             ws.send(JSON.stringify({ type: 1, invocationId: "sub", target: "Subscribe", arguments: [LIVE_TOPICS] }) + RS);
             continue;
@@ -110,7 +117,10 @@ export class LiveSource implements DataSource {
 
   private onRecord(m: any): void {
     if (m.type === 3 && m.invocationId === "sub") {
-      if (m.error) return this.fail(`Subscribe: ${m.error}`);
+      if (m.error) {
+        this.fail(`Subscribe: ${m.error}`);
+        return;
+      }
       const result = (m.result ?? {}) as Record<string, unknown>;
       this.state.initial = LIVE_TOPICS.filter((t) => result[t] !== undefined);
       this.state.status = "connected";

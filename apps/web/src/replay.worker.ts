@@ -1,13 +1,13 @@
 /// <reference lib="webworker" />
 import {
   buildIndex,
+  type ClientCommand,
   findOutline,
+  type LoadedSession,
   prepareMessages,
   ReplayPlayer,
-  unpackSession,
-  type ClientCommand,
-  type LoadedSession,
   type ServerMessage,
+  unpackSession,
 } from "@f1/core";
 import { loadOpenF1Session } from "@f1/openf1";
 
@@ -44,7 +44,7 @@ setInterval(() => {
   if (player) for (const m of player.frame(Date.now())) post(m);
 }, SNAPSHOT_MS);
 
-onmessage = async (ev: MessageEvent<{ cmd: ClientCommand; dataBase?: string }>) => {
+self.onmessage = async (ev: MessageEvent<{ cmd: ClientCommand; dataBase?: string }>) => {
   const { cmd, dataBase } = ev.data;
   if (cmd.type !== "open") return player?.handle(cmd, Date.now());
   player = null;

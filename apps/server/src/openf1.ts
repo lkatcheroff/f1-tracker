@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { RawMessage } from "@f1/core";
-import { findOpenF1Session, loadOpenF1Session as fetchSession } from "@f1/openf1";
+import { loadOpenF1Session as fetchSession, findOpenF1Session } from "@f1/openf1";
 import { cacheDir } from "./config";
 
 /** Fallback OpenF1 con caché en disco: la sesión entera se baja una sola vez. */
