@@ -9,6 +9,7 @@ import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
 import { type ChartSeries, GapChart, SERIES_COLORS } from "./GapChart";
 import { IdealPanel } from "./IdealPanel";
 import { LivePanel } from "./LivePanel";
+import { PHONE, useMediaQuery } from "./media";
 import { PacePanel } from "./PacePanel";
 import { RaceControl } from "./RaceControl";
 import { RaceState } from "./RaceState";
@@ -20,6 +21,15 @@ import { useTracker } from "./useTracker";
 
 const MAX_SERIES = SERIES_COLORS.length;
 
+type TabId = "tower" | "map" | "gaps" | "events" | "tel";
+const TABS: { id: TabId; label: string; replayOnly?: boolean }[] = [
+  { id: "tower", label: "Torre" },
+  { id: "map", label: "Mapa" },
+  { id: "gaps", label: "Gaps" },
+  { id: "events", label: "Eventos" },
+  { id: "tel", label: "Telemetría", replayOnly: true },
+];
+
 export function SessionView({ target }: { target: Target }) {
   const t = useTracker(target);
   const { snap, playback, live, index, send } = t;
@@ -27,6 +37,13 @@ export function SessionView({ target }: { target: Target }) {
 
   const [spoilerFree, setSpoilerFree] = useState(() => store.get("f1t:spoilerFree", true));
   useEffect(() => store.set("f1t:spoilerFree", spoilerFree), [spoilerFree]);
+
+  // En teléfono la vista se parte en pestañas (una columna con todo sería interminable).
+  const phone = useMediaQuery(PHONE);
+  const [tab, setTab] = useState<TabId>(() => store.get<TabId>("f1t:tab", "tower"));
+  useEffect(() => store.set("f1t:tab", tab), [tab]);
+  // Una pestaña guardada de otra sesión (la telemetría en un live) no existe acá: se vuelve a la torre.
+  const shown: TabId = tab === "tel" && target.mode !== "replay" ? "tower" : tab;
 
   // Pilotos del gráfico: nº de auto → slot de color. El slot no cambia mientras el piloto siga elegido.
   const selKey = `f1t:sel:${source}`;
@@ -151,6 +168,42 @@ export function SessionView({ target }: { target: Target }) {
       ? "El feed en vivo no está mandando posiciones (requiere cuenta de F1)."
       : null;
 
+  const tower = snap && <Tower drivers={snap.drivers} through={snap.through} selected={selectedColors} onToggle={toggle} />;
+  const map = snap && (
+    <TrackMap
+      outline={t.outline}
+      circuit={circuit}
+      snap={snap}
+      tone={track?.tone}
+      instant={(playback?.speed ?? 1) > 2}
+      missingReason={noPositions}
+    />
+  );
+  const raceState = snap && insights?.isRace && (
+    <RaceState snap={snap} insights={insights} events={happened} battles={battles} projections={projected} />
+  );
+  const eventPanel = insights && (
+    <EventPanel
+      insights={insights}
+      events={happened}
+      filter={filter}
+      startTs={insights.startTs}
+      spoilerFree={spoilerFree}
+      onJump={jump}
+      onResetHighWater={() => resetHighWater(time)}
+    />
+  );
+  const pace = insights?.isRace && <PacePanel insights={insights} now={time} selected={selectedColors} />;
+  const ideal = insights && !insights.isRace && <IdealPanel insights={insights} now={time} />;
+  const dominance = target.mode === "replay" && (
+    <DominancePanel source={target.source} now={time} outline={t.outline} circuit={circuit} insights={insights} selected={selectedColors} />
+  );
+  const gapChart = snap && <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />;
+  const raceControl = snap && <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />;
+  const telemetry = snap && target.mode === "replay" && (
+    <TelemetryPanel source={target.source} snap={snap} outline={t.outline} circuit={circuit} spoilerFree={spoilerFree} />
+  );
+
   return (
     <div className="session">
       <header className="bar">
@@ -233,50 +286,73 @@ export function SessionView({ target }: { target: Target }) {
       {!t.connected && !t.loading && <p className="notice notice-error">Se cortó la conexión con el server local. Reintentando…</p>}
 
       {snap && (
-        <div className="grid">
-          <Tower drivers={snap.drivers} through={snap.through} selected={selectedColors} onToggle={toggle} />
-          <aside>
-            <TrackMap
-              outline={t.outline}
-              circuit={circuit}
-              snap={snap}
-              tone={track?.tone}
-              instant={(playback?.speed ?? 1) > 2}
-              missingReason={noPositions}
-            />
-            {insights?.isRace && <RaceState snap={snap} insights={insights} events={happened} battles={battles} projections={projected} />}
-            {insights && (
-              <EventPanel
-                insights={insights}
-                events={happened}
-                filter={filter}
-                startTs={insights.startTs}
-                spoilerFree={spoilerFree}
-                onJump={jump}
-                onResetHighWater={() => resetHighWater(time)}
-              />
-            )}
-            {insights?.isRace && <PacePanel insights={insights} now={time} selected={selectedColors} />}
-            {insights && !insights.isRace && <IdealPanel insights={insights} now={time} />}
-            {target.mode === "replay" && (
-              <DominancePanel
-                source={target.source}
-                now={time}
-                outline={t.outline}
-                circuit={circuit}
-                insights={insights}
-                selected={selectedColors}
-              />
-            )}
-            <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />
-            <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />
-          </aside>
-        </div>
-      )}
-      {snap && target.mode === "replay" && (
-        <div className="tel-wrap">
-          <TelemetryPanel source={target.source} snap={snap} outline={t.outline} circuit={circuit} spoilerFree={spoilerFree} />
-        </div>
+        <>
+          {phone ? (
+            <>
+              <div className="tabs" role="tablist" aria-label="Secciones">
+                {TABS.filter((x) => !x.replayOnly || target.mode === "replay").map((x) => (
+                  <button
+                    key={x.id}
+                    type="button"
+                    role="tab"
+                    id={`tab-${x.id}`}
+                    aria-selected={shown === x.id}
+                    aria-controls="tab-body"
+                    className="tab"
+                    onClick={() => setTab(x.id)}
+                  >
+                    {x.label}
+                  </button>
+                ))}
+              </div>
+              <div className="tab-body" id="tab-body" role="tabpanel" aria-labelledby={`tab-${shown}`}>
+                {shown === "tower" && tower}
+                {shown === "map" && (
+                  <>
+                    {map}
+                    {raceState}
+                  </>
+                )}
+                {shown === "gaps" && (
+                  <>
+                    {gapChart}
+                    {pace}
+                    {ideal}
+                  </>
+                )}
+                {shown === "events" && (
+                  <>
+                    {eventPanel}
+                    {raceControl}
+                  </>
+                )}
+                {shown === "tel" && target.mode === "replay" && (
+                  <>
+                    {dominance}
+                    {telemetry}
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid">
+                {tower}
+                <aside>
+                  {map}
+                  {raceState}
+                  {eventPanel}
+                  {pace}
+                  {ideal}
+                  {dominance}
+                  {gapChart}
+                  {raceControl}
+                </aside>
+              </div>
+              {telemetry && <div className="tel-wrap">{telemetry}</div>}
+            </>
+          )}
+        </>
       )}
     </div>
   );

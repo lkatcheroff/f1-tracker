@@ -29,6 +29,8 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
   /** segundos que el tracker va corrido respecto del video después de sincronizar */
   const [offset, setOffset] = useState(() => store.get(offsetKey, 0));
   const [drag, setDrag] = useState<number | null>(null);
+  /** En teléfono, los controles secundarios van plegados en "Ajustes". En pantallas grandes siempre se ven. */
+  const [adjustOpen, setAdjustOpen] = useState(false);
   useEffect(() => store.set(offsetKey, offset), [offsetKey, offset]);
 
   const { time, paused, speed } = playback;
@@ -81,32 +83,34 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
         >
           {paused ? "▶ Reproducir" : "❚❚ Pausar"}
         </button>
-        <button type="button" className="btn" onClick={() => seek(time - 5000)} title="Retroceder 5 segundos (flecha izquierda)">
-          −5 s
-        </button>
-        <button type="button" className="btn" onClick={() => seek(time + 5000)} title="Avanzar 5 segundos (flecha derecha)">
-          +5 s
-        </button>
-        <label className="field">
-          Velocidad
-          <select value={speed} onChange={(e) => send({ type: "speed", x: Number(e.target.value) })}>
-            {SPEEDS.map((x) => (
-              <option key={x} value={x}>
-                {x}×
-              </option>
-            ))}
-          </select>
-        </label>
-        {hasLaps && (
+        <span className={`adj ${adjustOpen ? "open" : ""}`}>
+          <button type="button" className="btn" onClick={() => seek(time - 5000)} title="Retroceder 5 segundos (flecha izquierda)">
+            −5 s
+          </button>
+          <button type="button" className="btn" onClick={() => seek(time + 5000)} title="Avanzar 5 segundos (flecha derecha)">
+            +5 s
+          </button>
           <label className="field">
-            Ir a vuelta
-            <select value={snap.lap?.current ?? 1} onChange={(e) => goLap(Number(e.target.value))}>
-              {Array.from({ length: index.totalLaps! }, (_, i) => i + 1).map((n) => (
-                <option key={n}>{n}</option>
+            Velocidad
+            <select value={speed} onChange={(e) => send({ type: "speed", x: Number(e.target.value) })}>
+              {SPEEDS.map((x) => (
+                <option key={x} value={x}>
+                  {x}×
+                </option>
               ))}
             </select>
           </label>
-        )}
+          {hasLaps && (
+            <label className="field">
+              Ir a vuelta
+              <select value={snap.lap?.current ?? 1} onChange={(e) => goLap(Number(e.target.value))}>
+                {Array.from({ length: index.totalLaps! }, (_, i) => i + 1).map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </span>
         <span className="clock">
           {sinceStart === null
             ? fmtDuration(time)
@@ -120,10 +124,15 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
             </span>
           )}
         </span>
-        <label className="check">
-          <input type="checkbox" checked={spoilerFree} onChange={(e) => onSpoilerFree(e.target.checked)} />
-          Sin spoilers
-        </label>
+        <span className={`adj ${adjustOpen ? "open" : ""}`}>
+          <label className="check">
+            <input type="checkbox" checked={spoilerFree} onChange={(e) => onSpoilerFree(e.target.checked)} />
+            Sin spoilers
+          </label>
+        </span>
+        <button type="button" className="btn only-sm btn-adjust" aria-expanded={adjustOpen} onClick={() => setAdjustOpen((v) => !v)}>
+          Ajustes {adjustOpen ? "▴" : "▾"}
+        </button>
       </div>
 
       <div className="ctl-row">
@@ -136,23 +145,25 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
         >
           Sync: largada
         </button>
-        <span className="field">
-          Ajuste fino
-          <span className="btn-group">
-            {[-5, -1, 1, 5].map((d) => (
-              <button type="button" key={d} className="btn" onClick={() => nudge(d)}>
-                {d > 0 ? `+${d}` : `−${-d}`} s
-              </button>
-            ))}
+        <span className={`adj ${adjustOpen ? "open" : ""}`}>
+          <span className="field">
+            Ajuste fino
+            <span className="btn-group">
+              {[-5, -1, 1, 5].map((d) => (
+                <button type="button" key={d} className="btn" onClick={() => nudge(d)}>
+                  {d > 0 ? `+${d}` : `−${-d}`} s
+                </button>
+              ))}
+            </span>
           </span>
+          <label
+            className="field"
+            title="Segundos que el tracker va adelantado (+) o atrasado (−) respecto del video. Se recuerda por sesión."
+          >
+            Offset
+            <input type="number" step="0.5" value={offset} onChange={(e) => editOffset(e.target.valueAsNumber)} />s
+          </label>
         </span>
-        <label
-          className="field"
-          title="Segundos que el tracker va adelantado (+) o atrasado (−) respecto del video. Se recuerda por sesión."
-        >
-          Offset
-          <input type="number" step="0.5" value={offset} onChange={(e) => editOffset(e.target.valueAsNumber)} />s
-        </label>
         <div className="scrub-wrap">
           <input
             className="scrub"

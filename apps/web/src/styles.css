@@ -1164,3 +1164,176 @@ fieldset.bare {
 .tel-self td {
   font-weight: 700;
 }
+
+/* --- teléfono y pantallas táctiles --- */
+.only-sm {
+  display: none;
+}
+/* En pantallas grandes los grupos plegables no existen: sus controles quedan en la fila, como antes. */
+.adj {
+  display: contents;
+}
+@media (max-width: 720px) {
+  .only-sm {
+    display: inline-flex;
+  }
+  .hide-sm {
+    display: none;
+  }
+  .bar {
+    gap: 6px 12px;
+    padding: 8px 16px;
+  }
+  .facts {
+    margin-left: 0;
+    width: 100%;
+    gap: 6px 14px;
+  }
+  .fact strong {
+    font-size: 15px;
+  }
+
+  /* Controles compactos: reproducir, sync y "Ajustes" arriba; la barra, siempre a mano; el resto, plegado. */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 16px;
+  }
+  .ctl-row {
+    display: contents;
+  }
+  .controls .btn-icon {
+    order: 1;
+    min-width: 0;
+    flex: 1;
+  }
+  .controls .btn-primary {
+    order: 2;
+    flex: 1;
+  }
+  .controls .btn-adjust {
+    order: 3;
+  }
+  .controls .clock {
+    order: 4;
+    width: 100%;
+    margin: 0;
+    text-align: center;
+  }
+  .controls .scrub-wrap {
+    order: 5;
+    flex-basis: 100%;
+  }
+  .controls .adj {
+    display: none;
+    order: 6;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .controls .adj.open {
+    display: flex;
+  }
+  .controls .muted.small {
+    order: 5;
+    width: 100%;
+    text-align: center;
+  }
+  .scrub {
+    min-width: 0;
+  }
+}
+
+/* Objetivos táctiles de 44 px donde no hay mouse. */
+@media (max-width: 720px), (pointer: coarse) {
+  .btn,
+  select,
+  input[type="number"] {
+    min-height: 44px;
+  }
+  .btn {
+    padding-inline: 14px;
+  }
+  .chip-filter,
+  .linklike {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .check {
+    min-height: 44px;
+  }
+  input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+  .scrub {
+    height: 32px;
+  }
+  .tower td,
+  .tower th {
+    padding-block: 12px;
+  }
+  .event-track {
+    height: 44px;
+  }
+  .event-track .mark {
+    min-width: 28px;
+    height: 44px;
+    line-height: 44px;
+  }
+  .event-track .band {
+    top: 19px;
+  }
+  .event-row {
+    min-height: 44px;
+  }
+  .chip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* --- pestañas del teléfono --- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg, var(--surface));
+  border-bottom: 1px solid var(--line);
+}
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+.tab {
+  font: inherit;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 12px;
+  min-height: 44px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab[aria-selected="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+.tab-body {
+  display: grid;
+  gap: 12px;
+  padding: 12px 16px 24px;
+  min-width: 0;
+}

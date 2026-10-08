@@ -74,18 +74,18 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
             <th className="num">Gap</th>
             <th className="num">Int</th>
             <th className="num">Última</th>
-            <th className="num">Mejor</th>
+            <th className="num hide-sm">Mejor</th>
             {cut && (
               <th className="num" title="Margen respecto del corte: + lo que le sobra al que pasa, − lo que le falta al que está afuera">
                 Corte
               </th>
             )}
-            <th className="num">S1</th>
-            <th className="num">S2</th>
-            <th className="num">S3</th>
+            <th className="num hide-sm">S1</th>
+            <th className="num hide-sm">S2</th>
+            <th className="num hide-sm">S3</th>
             <th>Neum.</th>
-            <th className="num">Pits</th>
-            <th></th>
+            <th className="num hide-sm">Pits</th>
+            <th className="hide-sm"></th>
           </tr>
         </thead>
         <tbody>
@@ -112,7 +112,7 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
                 <td className="num">{d.gap}</td>
                 <td className={`num ${d.catching ? "catching" : ""}`}>{d.interval}</td>
                 <td className={`num ${timedClass(d.lastLap)}`}>{d.lastLap.value}</td>
-                <td className="num">{d.bestLap}</td>
+                <td className="num hide-sm">{d.bestLap}</td>
                 {cut && (
                   <td className={`num cut ${d.inCutZone ? "cut-out" : "cut-safe"}`}>
                     {d.knockedOut ? "" : d.cutGap === null ? (d.inCutZone ? "sin tiempo" : "") : fmtCut(d.cutGap)}
@@ -121,7 +121,7 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
                 {[0, 1, 2].map((i) => {
                   const s = d.sectors[i];
                   return (
-                    <td key={i} className={`num sector ${s ? timedClass(s) : ""}`}>
+                    <td key={i} className={`num sector hide-sm ${s ? timedClass(s) : ""}`}>
                       {s?.value}
                       <Minis codes={d.minis[i]} />
                     </td>
@@ -137,8 +137,8 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
                     </div>
                   )}
                 </td>
-                <td className="num">{d.pits || ""}</td>
-                <td className="state">{state(d)}</td>
+                <td className="num hide-sm">{d.pits || ""}</td>
+                <td className="state hide-sm">{state(d)}</td>
               </tr>
             );
           })}
