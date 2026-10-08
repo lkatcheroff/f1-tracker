@@ -25,9 +25,7 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
   const seek = (ts: number) => send({ type: "seek", ts });
 
   // Largada más cercana al punto actual (en clasificación hay una por parte).
-  const start = index.starts.length
-    ? index.starts.reduce((best, s) => (Math.abs(s - time) < Math.abs(best - time) ? s : best))
-    : null;
+  const start = index.starts.length ? index.starts.reduce((best, s) => (Math.abs(s - time) < Math.abs(best - time) ? s : best)) : null;
   const sinceStart = index.starts.length ? time - index.starts[0] : null;
 
   const sync = () => {
@@ -100,7 +98,12 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
             : sinceStart >= 0
               ? `${fmtDuration(sinceStart)} desde la largada`
               : `${fmtDuration(-sinceStart)} para la largada`}
-          {!spoilerFree && <span className="muted"> · {fmtDuration(time)} de {fmtDuration(index.duration)}</span>}
+          {!spoilerFree && (
+            <span className="muted">
+              {" "}
+              · {fmtDuration(time)} de {fmtDuration(index.duration)}
+            </span>
+          )}
         </span>
         <label className="check">
           <input type="checkbox" checked={spoilerFree} onChange={(e) => onSpoilerFree(e.target.checked)} />
@@ -127,7 +130,10 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
             ))}
           </span>
         </span>
-        <label className="field" title="Segundos que el tracker va adelantado (+) o atrasado (−) respecto del video. Se recuerda por sesión.">
+        <label
+          className="field"
+          title="Segundos que el tracker va adelantado (+) o atrasado (−) respecto del video. Se recuerda por sesión."
+        >
           Offset
           <input type="number" step="0.5" value={offset} onChange={(e) => editOffset(e.target.valueAsNumber)} />s
         </label>

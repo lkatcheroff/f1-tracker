@@ -50,13 +50,16 @@ export function TelemetryPanel({ source, snap, outline, circuit, spoilerFree }: 
       </div>
       {!open && (
         <p className="chart-note">
-          Compará una vuelta con la mejor de la sesión, con el corte de clasificación o con cualquier rival, viendo en qué parte de la pista se gana o se pierde el tiempo.
+          Compará una vuelta con la mejor de la sesión, con el corte de clasificación o con cualquier rival, viendo en qué parte de la pista
+          se gana o se pierde el tiempo.
         </p>
       )}
       {open && state.status === "loading" && <p className="empty">Bajando la telemetría…</p>}
       {open && state.status === "missing" && <p className="empty">{unavailable}</p>}
       {open && state.status === "error" && <p className="empty">No se pudo cargar la telemetría: {state.message}</p>}
-      {open && state.status === "ready" && <Body tel={state.data} snap={snap} outline={outline} circuit={circuit} spoilerFree={spoilerFree} />}
+      {open && state.status === "ready" && (
+        <Body tel={state.data} snap={snap} outline={outline} circuit={circuit} spoilerFree={spoilerFree} />
+      )}
     </section>
   );
 }
@@ -65,7 +68,13 @@ const KIND_TAG: Record<string, string> = { in: " · entrada a boxes", out: " · 
 const lapOption = (l: TelemetryLap) => `V${l.n} · ${fmtLapMs(l.ms)}${KIND_TAG[l.kind] ?? ""}`;
 
 function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"> & { tel: SessionTelemetry }) {
-  const order: OrderRow[] = snap.drivers.map((d) => ({ num: d.num, tla: d.tla, team: d.team, knockedOut: d.knockedOut, retired: d.retired }));
+  const order: OrderRow[] = snap.drivers.map((d) => ({
+    num: d.num,
+    tla: d.tla,
+    team: d.team,
+    knockedOut: d.knockedOut,
+    retired: d.retired,
+  }));
   const tla = (num: string) => order.find((d) => d.num === num)?.tla ?? num;
 
   const [aNum, setANum] = useState<string | null>(null);
@@ -118,7 +127,8 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
   const ix = useMemo(() => (outline ? indexOutline(outline.points) : null), [outline]);
   const markers = useMemo<Marker[]>(() => {
     const m: Marker[] = [{ x: 0, label: "Meta", strong: true }];
-    if (tel.marks) m.push({ x: tel.marks[0] * tel.length, label: "S2", strong: true }, { x: tel.marks[1] * tel.length, label: "S3", strong: true });
+    if (tel.marks)
+      m.push({ x: tel.marks[0] * tel.length, label: "S2", strong: true }, { x: tel.marks[1] * tel.length, label: "S3", strong: true });
     if (circuit && ix) {
       for (const c of circuit.corners) {
         const p = projectOnOutline(ix, c.trackPosition.x, c.trackPosition.y);
@@ -183,7 +193,10 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
         </label>
         <label className="field">
           Vuelta
-          <select value={String(aChoice)} onChange={(e) => setAChoice(e.target.value === "live" || e.target.value === "best" ? e.target.value : Number(e.target.value))}>
+          <select
+            value={String(aChoice)}
+            onChange={(e) => setAChoice(e.target.value === "live" || e.target.value === "best" ? e.target.value : Number(e.target.value))}
+          >
             <option value="live">En curso{cur ? ` (V${cur.lap.n})` : ""}</option>
             <option value="best">Su mejor vuelta</option>
             {aPool.map((l) => (
@@ -199,7 +212,9 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
             value={spec.kind}
             onChange={(e) => {
               const kind = e.target.value as RefSpec["kind"];
-              setRefSpec(kind === "driver" ? { kind, driver: (rivals.teammate ?? rivals.ahead ?? rivals.behind)?.num, lap: "best" } : { kind });
+              setRefSpec(
+                kind === "driver" ? { kind, driver: (rivals.teammate ?? rivals.ahead ?? rivals.behind)?.num, lap: "best" } : { kind },
+              );
             }}
           >
             <option value="best">Mejor vuelta de la sesión</option>
@@ -251,12 +266,21 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
             ["behind", "Auto de atrás"],
           ] as const
         ).map(([who, label]) => (
-          <button key={who} className={`btn btn-small ${spec.kind === "driver" && spec.driver === rivals[who]?.num ? "btn-on" : ""}`} disabled={!rivals[who]} onClick={() => pickRival(who)}>
+          <button
+            key={who}
+            className={`btn btn-small ${spec.kind === "driver" && spec.driver === rivals[who]?.num ? "btn-on" : ""}`}
+            disabled={!rivals[who]}
+            onClick={() => pickRival(who)}
+          >
             {label}
             {rivals[who] ? ` (${rivals[who]!.tla})` : ""}
           </button>
         ))}
-        <button className={`btn btn-small ${refSpec === null ? "btn-on" : ""}`} onClick={() => setRefSpec(null)} title="Vuelve a la referencia que corresponde: el corte en clasificación, la mejor de la sesión en el resto">
+        <button
+          className={`btn btn-small ${refSpec === null ? "btn-on" : ""}`}
+          onClick={() => setRefSpec(null)}
+          title="Vuelve a la referencia que corresponde: el corte en clasificación, la mejor de la sesión en el resto"
+        >
           Referencia automática
         </button>
       </div>
@@ -311,15 +335,46 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
               <div className="tel-title">
                 Velocidad <span className="muted small">km/h</span>
               </div>
-              <TelChart data={charts.speed} height={130} length={tel.length} markers={markers} range={(min, max) => [Math.max(0, min - 10), max + 10]} fmtY={(v) => String(Math.round(v))} />
+              <TelChart
+                data={charts.speed}
+                height={130}
+                length={tel.length}
+                markers={markers}
+                range={(min, max) => [Math.max(0, min - 10), max + 10]}
+                fmtY={(v) => String(Math.round(v))}
+              />
               <div className="tel-title">
                 Acelerador <span className="muted small">%</span>
               </div>
-              <TelChart data={charts.throttle} height={90} length={tel.length} markers={markers} range={() => [-5, 105]} fmtY={(v) => (v >= 0 && v <= 100 ? String(Math.round(v)) : "")} />
+              <TelChart
+                data={charts.throttle}
+                height={90}
+                length={tel.length}
+                markers={markers}
+                range={() => [-5, 105]}
+                fmtY={(v) => (v >= 0 && v <= 100 ? String(Math.round(v)) : "")}
+              />
               <div className="tel-title">Freno</div>
-              <TelChart data={charts.brake} height={56} length={tel.length} markers={markers} stepped range={() => [-0.15, 1.15]} fmtY={(v) => (v === 1 ? "sí" : v === 0 ? "no" : "")} />
+              <TelChart
+                data={charts.brake}
+                height={56}
+                length={tel.length}
+                markers={markers}
+                stepped
+                range={() => [-0.15, 1.15]}
+                fmtY={(v) => (v === 1 ? "sí" : v === 0 ? "no" : "")}
+              />
               <div className="tel-title">Marcha</div>
-              <TelChart data={charts.gear} height={90} length={tel.length} markers={markers} stepped showXAxis range={(min, max) => [Math.max(0, min - 0.5), max + 0.5]} fmtY={(v) => (Number.isInteger(v) ? String(v) : "")} />
+              <TelChart
+                data={charts.gear}
+                height={90}
+                length={tel.length}
+                markers={markers}
+                stepped
+                showXAxis
+                range={(min, max) => [Math.max(0, min - 0.5), max + 0.5]}
+                fmtY={(v) => (Number.isInteger(v) ? String(v) : "")}
+              />
             </div>
 
             <aside className="tel-side">
@@ -379,13 +434,16 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
                           </td>
                         );
                       })}
-                      <td className={`num ${upto >= tel.grid - 1 ? deltaClass((lapA.ms - refLap!.ms) / 1000) : ""}`}>{upto >= tel.grid - 1 ? fmtDelta((lapA.ms - refLap!.ms) / 1000) : "–"}</td>
+                      <td className={`num ${upto >= tel.grid - 1 ? deltaClass((lapA.ms - refLap!.ms) / 1000) : ""}`}>
+                        {upto >= tel.grid - 1 ? fmtDelta((lapA.ms - refLap!.ms) / 1000) : "–"}
+                      </td>
                     </tr>
                   )}
                 </tbody>
               </table>
               <p className="chart-note">
-                Los sectores salen de la traza de cada vuelta (suman el tiempo oficial). Rojo: {tla(lapA.d)} pierde tiempo en ese tramo; verde: lo gana. Las líneas verticales del gráfico son la meta, el inicio de S2 y S3 y los números de curva.
+                Los sectores salen de la traza de cada vuelta (suman el tiempo oficial). Rojo: {tla(lapA.d)} pierde tiempo en ese tramo;
+                verde: lo gana. Las líneas verticales del gráfico son la meta, el inicio de S2 y S3 y los números de curva.
               </p>
             </aside>
           </div>

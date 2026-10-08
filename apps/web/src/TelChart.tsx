@@ -49,7 +49,13 @@ export const TelChart = memo(function TelChart(props: Props) {
     if (!el) return;
     const { stepped, showXAxis, fmtY } = live.current;
     const stepPath = stepped ? uPlot.paths.stepped?.({ align: 1 }) : undefined;
-    const series = (stroke: string, width: number): uPlot.Series => ({ stroke, width, spanGaps: false, points: { show: false }, ...(stepPath ? { paths: stepPath } : {}) });
+    const series = (stroke: string, width: number): uPlot.Series => ({
+      stroke,
+      width,
+      spanGaps: false,
+      points: { show: false },
+      ...(stepPath ? { paths: stepPath } : {}),
+    });
     const u = new uPlot(
       {
         width: el.clientWidth,

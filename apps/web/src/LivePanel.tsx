@@ -39,7 +39,11 @@ export function LivePanel({ live, now }: { live: LiveState; now: number }) {
           {live.subscribed.map((t) => {
             const h = live.topics[t];
             return (
-              <span key={t} className={`topic ${h ? "topic-ok" : "topic-missing"}`} title={h ? `${h.count} mensajes, último ${age(now - h.lastTs)}` : "No llegó ningún dato"}>
+              <span
+                key={t}
+                className={`topic ${h ? "topic-ok" : "topic-missing"}`}
+                title={h ? `${h.count} mensajes, último ${age(now - h.lastTs)}` : "No llegó ningún dato"}
+              >
                 {h ? "✓" : "✕"} {t}
                 {h ? <span className="muted"> {h.count}</span> : IMPACT[t] ? <span className="muted"> · {IMPACT[t]}</span> : null}
               </span>

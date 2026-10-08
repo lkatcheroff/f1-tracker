@@ -58,7 +58,10 @@ export async function listRecordings(): Promise<RecordingEntry[]> {
   const out = await Promise.all(
     names.map(async (file) => {
       const st = await stat(path.join(recordingsDir(), file));
-      const label = file.replace(/\.jsonl$/, "").replace(/__/g, " · ").replace(/_/g, " ");
+      const label = file
+        .replace(/\.jsonl$/, "")
+        .replace(/__/g, " · ")
+        .replace(/_/g, " ");
       return { file, label, sizeKb: Math.round(st.size / 1024), modified: st.mtime.toISOString() };
     }),
   );

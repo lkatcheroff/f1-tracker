@@ -42,7 +42,10 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
   const base = useMemo(() => {
     if (!outline) return null;
     const pts = outline.points.map(([x, y]) => project(x, y));
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const [x, y] of pts) {
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
@@ -139,7 +142,9 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
   const blue = new Set(
     snap.utc === null
       ? []
-      : raceControl.filter((m) => m.flag === "BLUE" && m.driver && snap.utc! - rcTime(m) >= 0 && snap.utc! - rcTime(m) < BLUE_FLAG_MS).map((m) => m.driver!),
+      : raceControl
+          .filter((m) => m.flag === "BLUE" && m.driver && snap.utc! - rcTime(m) >= 0 && snap.utc! - rcTime(m) < BLUE_FLAG_MS)
+          .map((m) => m.driver!),
   );
   let fastest: string | null = null;
   if (race) {
@@ -150,7 +155,9 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
     }
   }
   const overtake = [...raceControl].reverse().find((m) => /^OVERTAKE (ENABLED|DISABLED)/.test(m.message));
-  const loss = circuit?.pitLoss ? Number(tone === "orange" ? (snap.track.status === "4" ? circuit.pitLoss.sc : circuit.pitLoss.vsc) : circuit.pitLoss.normal) : NaN;
+  const loss = circuit?.pitLoss
+    ? Number(tone === "orange" ? (snap.track.status === "4" ? circuit.pitLoss.sc : circuit.pitLoss.vsc) : circuit.pitLoss.normal)
+    : NaN;
 
   const view = cars.map((d) => {
     const parked = (d.stopped || d.retired) && !d.inPit;
@@ -162,7 +169,8 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
       parked,
       running,
       leader: race && d.position === 1 && !parked,
-      attacking: race && started && !neutralised && running && d.position > 1 && interval !== null && interval > 0 && interval < ATTACK_GAP_S,
+      attacking:
+        race && started && !neutralised && running && d.position > 1 && interval !== null && interval > 0 && interval < ATTACK_GAP_S,
       fastest: race && started && d.num === fastest && !parked,
       blue: blue.has(d.num),
       cutZone: !race && d.inCutZone && !d.knockedOut,
@@ -268,10 +276,22 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
               <title>{tip(v)}</title>
               {v.leader && <circle r={unit * 2.7} className="car-ring ring-leader" strokeWidth={unit * 0.5} />}
               {v.attacking && (
-                <circle r={unit * 2.7} className="car-ring ring-attack" strokeWidth={unit * 0.55} strokeDasharray={`${unit * 1.2} ${unit * 0.7}`} />
+                <circle
+                  r={unit * 2.7}
+                  className="car-ring ring-attack"
+                  strokeWidth={unit * 0.55}
+                  strokeDasharray={`${unit * 1.2} ${unit * 0.7}`}
+                />
               )}
               {v.blue && <circle r={unit * (v.attacking ? 3.5 : 2.7)} className="car-ring ring-blue" strokeWidth={unit * 0.55} />}
-              {v.cutZone && <circle r={unit * (hot ? 3.5 : 2.7)} className="car-ring ring-cut" strokeWidth={unit * 0.55} strokeDasharray={`${unit * 0.8} ${unit * 0.6}`} />}
+              {v.cutZone && (
+                <circle
+                  r={unit * (hot ? 3.5 : 2.7)}
+                  className="car-ring ring-cut"
+                  strokeWidth={unit * 0.55}
+                  strokeDasharray={`${unit * 0.8} ${unit * 0.6}`}
+                />
+              )}
               {hot && <circle r={unit * 2.5} className={`car-ring ring-${v.state}`} strokeWidth={unit * 0.55} />}
               {(v.state === "purple" || v.fastest) && <circle r={unit * 3.5} className="car-ring ring-purple" strokeWidth={unit * 0.35} />}
               {v.parked ? (
@@ -293,7 +313,12 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
                   strokeWidth={unit * (out ? 0.6 : 0.35)}
                 />
               )}
-              <text y={-unit * (v.fastest || v.state === "purple" ? 4.3 : ringed ? 3.5 : 2.4)} fontSize={unit * 2.4} className="car-label" strokeWidth={unit * 0.6}>
+              <text
+                y={-unit * (v.fastest || v.state === "purple" ? 4.3 : ringed ? 3.5 : 2.4)}
+                fontSize={unit * 2.4}
+                className="car-label"
+                strokeWidth={unit * 0.6}
+              >
                 {v.leader ? `P1 ${d.tla}` : d.tla}
               </text>
             </g>
@@ -449,8 +474,8 @@ export const TrackMap = memo(function TrackMap({ outline, circuit, snap, tone, i
       </ul>
       {race && circuit?.pitLoss && (
         <p className="map-note">
-          Una parada cuesta ~{Number(circuit.pitLoss.normal).toFixed(0)} s (~{Number(circuit.pitLoss.sc).toFixed(0)} s con Safety Car). Pasá el mouse por un auto
-          para ver dónde saldría si parara ahora.
+          Una parada cuesta ~{Number(circuit.pitLoss.normal).toFixed(0)} s (~{Number(circuit.pitLoss.sc).toFixed(0)} s con Safety Car). Pasá
+          el mouse por un auto para ver dónde saldría si parara ahora.
         </p>
       )}
     </div>

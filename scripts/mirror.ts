@@ -98,7 +98,11 @@ async function mirrorSession(s: SessionEntry, file: string, telFile: string): Pr
   return { size: bytes.length, tel: telBytes?.length ?? null };
 }
 
-const exists = (p: string) => stat(p).then(() => true, () => false);
+const exists = (p: string) =>
+  stat(p).then(
+    () => true,
+    () => false,
+  );
 
 async function writeIfChanged(file: string, content: string): Promise<boolean> {
   const prev = await readFile(file, "utf8").catch(() => null);
@@ -157,7 +161,9 @@ for (const { s, label } of published) {
       }
       const { size, tel } = await mirrorSession(s, file, telFile);
       added++;
-      console.log(`nueva: ${label} (${(size / 1048576).toFixed(1)} MB, telemetría ${tel === null ? "no disponible" : `${(tel / 1048576).toFixed(1)} MB`})`);
+      console.log(
+        `nueva: ${label} (${(size / 1048576).toFixed(1)} MB, telemetría ${tel === null ? "no disponible" : `${(tel / 1048576).toFixed(1)} MB`})`,
+      );
       changed = true;
     }
     s.data = `s/${name}`;

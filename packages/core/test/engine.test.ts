@@ -61,7 +61,11 @@ describe("deepMerge", () => {
 
   it("tolera un delta que deja huecos en un array", () => {
     const engine = new StateEngine();
-    engine.apply({ topic: "RaceControlMessages", ts: 0, data: { Messages: [{ Category: "Flag", Flag: "GREEN", Scope: "Track", Message: "a" }] } });
+    engine.apply({
+      topic: "RaceControlMessages",
+      ts: 0,
+      data: { Messages: [{ Category: "Flag", Flag: "GREEN", Scope: "Track", Message: "a" }] },
+    });
     engine.apply({ topic: "RaceControlMessages", ts: 1, data: { Messages: { "3": { Category: "Other", Message: "d" } } } });
     const s = engine.snapshot();
     expect(s.raceControl.map((m) => m.message)).toEqual(["a", "d"]);
@@ -128,8 +132,20 @@ describe("PlaybackClock", () => {
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../fixtures/2026-09-26_Azerbaijan_Grand_Prix_Race");
 const HAS_FIXTURE = existsSync(path.join(FIXTURE, "TimingData.jsonStream"));
 const TOPICS = [
-  "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "TimingStats", "LapCount",
-  "SessionStatus", "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z", "CarData.z",
+  "SessionInfo",
+  "Heartbeat",
+  "DriverList",
+  "TimingData",
+  "TimingAppData",
+  "TimingStats",
+  "LapCount",
+  "SessionStatus",
+  "TrackStatus",
+  "RaceControlMessages",
+  "WeatherData",
+  "ExtrapolatedClock",
+  "Position.z",
+  "CarData.z",
 ];
 
 describe.skipIf(!HAS_FIXTURE)("StateEngine contra la fixture", () => {
@@ -307,7 +323,11 @@ describe.skipIf(!HAS_FIXTURE)("señales para el mapa", () => {
     // 02:14:03: YELLOW IN TRACK SECTOR 2 y 1; se limpian a las 02:14:09 y 02:14:10
     expect(s.yellowSectors.map((y) => y.sector).sort()).toEqual([1, 2]);
     expect(stateAt("01:20:30.000").yellowSectors).toEqual([]);
-    expect(stateAt("00:56:00.000").drivers.every((d) => d.lapState === "pit" || d.lapState === null || d.lapState === "out" || d.lapState === "lap")).toBe(true);
+    expect(
+      stateAt("00:56:00.000").drivers.every(
+        (d) => d.lapState === "pit" || d.lapState === null || d.lapState === "out" || d.lapState === "lap",
+      ),
+    ).toBe(true);
     const racing = stateAt("01:20:30.000").drivers.filter((d) => !d.stopped);
     expect(racing.every((d) => ["lap", "green", "purple"].includes(d.lapState!))).toBe(true);
   });
@@ -444,12 +464,35 @@ describe.skipIf(!HAS_FIXTURE)("telemetría y mini-sectores", () => {
 
 describe("referencias de comparación", () => {
   const mk = (d: string, n: number, ms: number, part: number | null, kind: TelemetryLap["kind"] = "flying"): TelemetryLap => ({
-    d, n, s: n * 100_000, e: n * 100_000 + ms, ms, kind, part, tyre: "SOFT", age: 1,
-    t: [0, ms / 2, ms], v: [0, 0, 0], th: [0, 0, 0], br: [0, 0, 0], g: [1, 1, 1], r: [0, 0, 0],
+    d,
+    n,
+    s: n * 100_000,
+    e: n * 100_000 + ms,
+    ms,
+    kind,
+    part,
+    tyre: "SOFT",
+    age: 1,
+    t: [0, ms / 2, ms],
+    v: [0, 0, 0],
+    th: [0, 0, 0],
+    br: [0, 0, 0],
+    g: [1, 1, 1],
+    r: [0, 0, 0],
   });
   const tel: SessionTelemetry = {
-    v: 1, length: 5000, grid: 3, marks: [0.3, 0.7],
-    laps: [mk("1", 3, 90_000, 2), mk("1", 4, 91_000, 2), mk("2", 3, 90_500, 2), mk("3", 3, 89_900, 2), mk("3", 2, 95_000, 1), mk("4", 3, 92_000, 2, "out")],
+    v: 1,
+    length: 5000,
+    grid: 3,
+    marks: [0.3, 0.7],
+    laps: [
+      mk("1", 3, 90_000, 2),
+      mk("1", 4, 91_000, 2),
+      mk("2", 3, 90_500, 2),
+      mk("3", 3, 89_900, 2),
+      mk("3", 2, 95_000, 1),
+      mk("4", 3, 92_000, 2, "out"),
+    ],
   };
   const order: OrderRow[] = [
     { num: "3", tla: "AAA", team: "Alfa", knockedOut: false, retired: false },
@@ -464,7 +507,12 @@ describe("referencias de comparación", () => {
     expect(lastIn?.tla).toBe("BBB");
     expect(firstOut?.tla).toBe("CCC");
     expect(cutDrivers(order, null)).toEqual({ lastIn: null, firstOut: null });
-    expect(cutDrivers(order.map((d) => (d.num === "1" ? { ...d, knockedOut: true } : d)), 2).lastIn?.tla).toBe("CCC");
+    expect(
+      cutDrivers(
+        order.map((d) => (d.num === "1" ? { ...d, knockedOut: true } : d)),
+        2,
+      ).lastIn?.tla,
+    ).toBe("CCC");
   });
 
   it("compara con el corte usando la mejor vuelta de esa parte", () => {

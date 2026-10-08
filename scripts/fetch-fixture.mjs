@@ -7,8 +7,20 @@ import path from "node:path";
 const BASE = "https://livetiming.formula1.com/static/";
 const sessionPath = process.argv[2] ?? "2026/2026-09-26_Azerbaijan_Grand_Prix/2026-09-26_Race/";
 const FILES = [
-  "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "TimingStats", "LapCount",
-  "SessionStatus", "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z", "CarData.z",
+  "SessionInfo",
+  "Heartbeat",
+  "DriverList",
+  "TimingData",
+  "TimingAppData",
+  "TimingStats",
+  "LapCount",
+  "SessionStatus",
+  "TrackStatus",
+  "RaceControlMessages",
+  "WeatherData",
+  "ExtrapolatedClock",
+  "Position.z",
+  "CarData.z",
 ];
 
 const parts = sessionPath.split("/").filter(Boolean);

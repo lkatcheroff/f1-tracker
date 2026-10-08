@@ -16,7 +16,11 @@ export class ReplaySession implements ClientSession {
   private readonly player: ReplayPlayer;
   private readonly timer: NodeJS.Timeout;
 
-  constructor(loaded: LoadedSession, private readonly send: Send, at?: number) {
+  constructor(
+    loaded: LoadedSession,
+    private readonly send: Send,
+    at?: number,
+  ) {
     this.player = new ReplayPlayer(loaded, Date.now(), at);
     send(this.player.opened());
     this.timer = setInterval(() => this.tick(), SNAPSHOT_MS);

@@ -23,7 +23,11 @@ export class ReplayPlayer {
   private readonly engine = new StateEngine({ checkpointEvery: 30_000 });
   private sentHist = 0;
 
-  constructor(private readonly session: LoadedSession, wall: number, at?: number) {
+  constructor(
+    private readonly session: LoadedSession,
+    wall: number,
+    at?: number,
+  ) {
     this.engine.outline = session.outline;
     // Sin posición guardada, arranca dos minutos antes de la largada (antes de eso casi no hay datos).
     const first = session.index.starts[0];

@@ -26,10 +26,7 @@ interface Props {
 
 function toData(history: GapSample[], series: ChartSeries[]): uPlot.AlignedData {
   const t0 = history[0]?.t ?? 0;
-  return [
-    history.map((p) => (p.t - t0) / 60_000),
-    ...series.map((s) => history.map((p) => p.gaps[s.num] ?? null)),
-  ] as uPlot.AlignedData;
+  return [history.map((p) => (p.t - t0) / 60_000), ...series.map((s) => history.map((p) => p.gaps[s.num] ?? null))] as uPlot.AlignedData;
 }
 
 /** Etiqueta cada línea en su último punto; si dos terminan juntas, las separa en vertical. */

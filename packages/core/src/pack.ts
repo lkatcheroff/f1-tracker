@@ -4,8 +4,19 @@ import type { RawMessage } from "./types";
 
 /** Streams del archivo estático de F1 que usa el replay. `CarData.z` solo alimenta la telemetría; `TimingStats` queda fuera. */
 export const REPLAY_TOPICS = [
-  "SessionInfo", "Heartbeat", "DriverList", "TimingData", "TimingAppData", "LapCount", "SessionStatus",
-  "TrackStatus", "RaceControlMessages", "WeatherData", "ExtrapolatedClock", "Position.z", "CarData.z",
+  "SessionInfo",
+  "Heartbeat",
+  "DriverList",
+  "TimingData",
+  "TimingAppData",
+  "LapCount",
+  "SessionStatus",
+  "TrackStatus",
+  "RaceControlMessages",
+  "WeatherData",
+  "ExtrapolatedClock",
+  "Position.z",
+  "CarData.z",
 ];
 
 /** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
@@ -21,19 +32,21 @@ const MIN_VERSION = 2;
 export function packSession(session: Omit<LoadedSession, "source">): Uint8Array {
   const topics: string[] = [];
   // La telemetría va en su propio archivo (`packTelemetry`): acá pesaría el doble y casi nadie la abre.
-  const messages = session.messages.filter((m) => m.topic !== "CarData").map((m) => {
-    let t = topics.indexOf(m.topic);
-    if (t === -1) t = topics.push(m.topic) - 1;
-    let data = m.data;
-    if (m.topic === "Position") {
-      const compact: Record<string, [number, number, number]> = {};
-      for (const [num, e] of Object.entries(data as Record<string, any>)) {
-        compact[num] = Array.isArray(e) ? (e as [number, number, number]) : [e.X, e.Y, e.Status === "OnTrack" ? 1 : 0];
+  const messages = session.messages
+    .filter((m) => m.topic !== "CarData")
+    .map((m) => {
+      let t = topics.indexOf(m.topic);
+      if (t === -1) t = topics.push(m.topic) - 1;
+      let data = m.data;
+      if (m.topic === "Position") {
+        const compact: Record<string, [number, number, number]> = {};
+        for (const [num, e] of Object.entries(data as Record<string, any>)) {
+          compact[num] = Array.isArray(e) ? (e as [number, number, number]) : [e.X, e.Y, e.Status === "OnTrack" ? 1 : 0];
+        }
+        data = compact;
       }
-      data = compact;
-    }
-    return [t, m.ts, data];
-  });
+      return [t, m.ts, data];
+    });
   return gzipSync(strToU8(JSON.stringify({ v: VERSION, topics, messages, index: session.index, outline: session.outline })), { level: 9 });
 }
 

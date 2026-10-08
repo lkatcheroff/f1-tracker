@@ -81,7 +81,12 @@ export function indexOutline(points: XY[]): OutlineIndex {
  * Con `hint` (segmento anterior) solo mira los vecinos: sigue al auto sin saltar a un tramo paralelo,
  * como la recta de boxes o las curvas que se cruzan cerca.
  */
-export function projectOnOutline(ix: OutlineIndex, x: number, y: number, hint: number | null = null): { f: number; i: number; d: number } | null {
+export function projectOnOutline(
+  ix: OutlineIndex,
+  x: number,
+  y: number,
+  hint: number | null = null,
+): { f: number; i: number; d: number } | null {
   const n = ix.pts.length;
   const scan = (from: number, count: number) => {
     let best = { f: 0, i: 0, d: Infinity };
@@ -279,7 +284,10 @@ function traceLap(
 export function buildTelemetry(
   messages: RawMessage[],
   outline: TrackOutline | null,
-  opts: { grid?: number; /** avisa de cada vuelta que se descarta y por qué */ onSkip?: (driver: string, lap: number, reason: string) => void } = {},
+  opts: {
+    grid?: number /** avisa de cada vuelta que se descarta y por qué */;
+    onSkip?: (driver: string, lap: number, reason: string) => void;
+  } = {},
 ): SessionTelemetry | null {
   if (!outline || outline.points.length < 50) return null;
   const grid = opts.grid ?? GRID;
@@ -433,8 +441,21 @@ const undelta = (a: number[]) => {
 /** Empaqueta la telemetría en un gzip. Los canales van como diferencias entre puntos contiguos, que comprimen mucho mejor. */
 export function packTelemetry(t: SessionTelemetry): Uint8Array {
   const laps = t.laps.map((l) => [
-    l.d, l.n, l.s, l.e, l.ms, l.kind, l.part, l.tyre, l.age,
-    delta(l.t), delta(l.v), delta(l.th), delta(l.br), delta(l.g), delta(l.r.map((r) => Math.round(r / 10))),
+    l.d,
+    l.n,
+    l.s,
+    l.e,
+    l.ms,
+    l.kind,
+    l.part,
+    l.tyre,
+    l.age,
+    delta(l.t),
+    delta(l.v),
+    delta(l.th),
+    delta(l.br),
+    delta(l.g),
+    delta(l.r.map((r) => Math.round(r / 10))),
   ]);
   return gzipSync(strToU8(JSON.stringify({ v: t.v, length: t.length, grid: t.grid, marks: t.marks, laps })), { level: 9 });
 }
@@ -443,8 +464,21 @@ export function unpackTelemetry(bytes: Uint8Array): SessionTelemetry {
   const d = JSON.parse(strFromU8(gunzipSync(bytes)));
   if (d.v !== TELEMETRY_VERSION) throw new Error(`formato de telemetría desconocido (v${d.v})`);
   const laps: TelemetryLap[] = d.laps.map((l: any[]) => ({
-    d: l[0], n: l[1], s: l[2], e: l[3], ms: l[4], kind: l[5], part: l[6], tyre: l[7], age: l[8],
-    t: undelta(l[9]), v: undelta(l[10]), th: undelta(l[11]), br: undelta(l[12]), g: undelta(l[13]), r: undelta(l[14]).map((r) => r * 10),
+    d: l[0],
+    n: l[1],
+    s: l[2],
+    e: l[3],
+    ms: l[4],
+    kind: l[5],
+    part: l[6],
+    tyre: l[7],
+    age: l[8],
+    t: undelta(l[9]),
+    v: undelta(l[10]),
+    th: undelta(l[11]),
+    br: undelta(l[12]),
+    g: undelta(l[13]),
+    r: undelta(l[14]).map((r) => r * 10),
   }));
   return { v: d.v, length: d.length, grid: d.grid, marks: d.marks, laps };
 }

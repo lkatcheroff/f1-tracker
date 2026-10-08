@@ -80,17 +80,25 @@ export function resolveRef(ctx: CompareContext, a: TelemetryLap, spec: RefSpec):
   const tla = (num: string) => ctx.order.find((d) => d.num === num)?.tla ?? num;
   const pick = (laps: TelemetryLap[], what: string, who: string): ResolvedRef => {
     const lap = bestLap(laps);
-    return lap ? { lap, label: lapLabel(lap, tla(lap.d)) } : { lap: null, label: what, missing: `${who} todavía no marcó una vuelta lanzada` };
+    return lap
+      ? { lap, label: lapLabel(lap, tla(lap.d)) }
+      : { lap: null, label: what, missing: `${who} todavía no marcó una vuelta lanzada` };
   };
 
   switch (spec.kind) {
     case "best":
       return pick(pool, "Mejor de la sesión", "Nadie");
     case "own":
-      return pick(pool.filter((l) => l.d === a.d), "Su mejor vuelta", "El piloto");
+      return pick(
+        pool.filter((l) => l.d === a.d),
+        "Su mejor vuelta",
+        "El piloto",
+      );
     case "prev": {
       const lap = pool.find((l) => l.d === a.d && l.n === a.n - 1);
-      return lap ? { lap, label: lapLabel(lap, tla(lap.d)) } : { lap: null, label: "Vuelta anterior", missing: "No hay una vuelta anterior registrada" };
+      return lap
+        ? { lap, label: lapLabel(lap, tla(lap.d)) }
+        : { lap: null, label: "Vuelta anterior", missing: "No hay una vuelta anterior registrada" };
     }
     case "cut-in":
     case "cut-out": {
@@ -109,7 +117,9 @@ export function resolveRef(ctx: CompareContext, a: TelemetryLap, spec: RefSpec):
       const theirs = pool.filter((l) => l.d === spec.driver);
       if (typeof spec.lap === "number") {
         const lap = theirs.find((l) => l.n === spec.lap);
-        return lap ? { lap, label: lapLabel(lap, tla(lap.d)) } : { lap: null, label: tla(spec.driver), missing: `${tla(spec.driver)} no tiene la vuelta ${spec.lap}` };
+        return lap
+          ? { lap, label: lapLabel(lap, tla(lap.d)) }
+          : { lap: null, label: tla(spec.driver), missing: `${tla(spec.driver)} no tiene la vuelta ${spec.lap}` };
       }
       return pick(theirs, tla(spec.driver), tla(spec.driver));
     }

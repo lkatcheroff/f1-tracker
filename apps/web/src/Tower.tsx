@@ -147,8 +147,8 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
       {!drivers.length && <p className="empty">Todavía no hay datos de tiempos.</p>}
       {cut && drivers.length > 0 && (
         <p className="tower-note">
-          Pasan los primeros {through}. La línea roja es el corte; abajo, en rojo, los que hoy quedan afuera. Corte: + lo que le sobra, − lo que le
-          falta.
+          Pasan los primeros {through}. La línea roja es el corte; abajo, en rojo, los que hoy quedan afuera. Corte: + lo que le sobra, − lo
+          que le falta.
         </p>
       )}
     </div>

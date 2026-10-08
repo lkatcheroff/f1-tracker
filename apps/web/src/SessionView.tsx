@@ -90,7 +90,9 @@ export function SessionView({ target }: { target: Target }) {
   const track = snap ? TRACK_STATUS[snap.track.status] : undefined;
   const w = snap?.weather;
   const noPositions =
-    live?.status === "connected" && !live.topics["Position.z"] ? "El feed en vivo no está mandando posiciones (requiere cuenta de F1)." : null;
+    live?.status === "connected" && !live.topics["Position.z"]
+      ? "El feed en vivo no está mandando posiciones (requiere cuenta de F1)."
+      : null;
 
   return (
     <div className="session">
@@ -118,7 +120,9 @@ export function SessionView({ target }: { target: Target }) {
             {snap.part ? (
               <span className="fact">
                 <strong>Q{snap.part}</strong>
-                {snap.status === "Started" && snap.remainingMs !== null ? ` · quedan ${fmtDuration(snap.remainingMs)}` : ` · ${SESSION_STATUS[snap.status] ?? snap.status}`}
+                {snap.status === "Started" && snap.remainingMs !== null
+                  ? ` · quedan ${fmtDuration(snap.remainingMs)}`
+                  : ` · ${SESSION_STATUS[snap.status] ?? snap.status}`}
               </span>
             ) : (
               snap.status && <span className="fact">{SESSION_STATUS[snap.status] ?? snap.status}</span>
@@ -140,7 +144,15 @@ export function SessionView({ target }: { target: Target }) {
       </header>
 
       {target.mode === "replay" && playback && index && snap && (
-        <Controls source={target.source} playback={playback} index={index} snap={snap} send={send} spoilerFree={spoilerFree} onSpoilerFree={setSpoilerFree} />
+        <Controls
+          source={target.source}
+          playback={playback}
+          index={index}
+          snap={snap}
+          send={send}
+          spoilerFree={spoilerFree}
+          onSpoilerFree={setSpoilerFree}
+        />
       )}
       {live && <LivePanel live={live} now={snap?.time ?? Date.now()} />}
 

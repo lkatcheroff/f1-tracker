@@ -1,4 +1,11 @@
-import { TELEMETRY_VERSION, unpackTelemetry, type ClientCommand, type ServerMessage, type SessionsResponse, type SessionTelemetry } from "@f1/core";
+import {
+  TELEMETRY_VERSION,
+  unpackTelemetry,
+  type ClientCommand,
+  type ServerMessage,
+  type SessionsResponse,
+  type SessionTelemetry,
+} from "@f1/core";
 
 /**
  * El front habla el mismo protocolo en los dos despliegues:

@@ -5,9 +5,23 @@ import { config } from "./config";
 const RS = "\x1e";
 
 export const LIVE_TOPICS = [
-  "Heartbeat", "DriverList", "ExtrapolatedClock", "RaceControlMessages", "SessionInfo", "SessionStatus", "SessionData",
-  "TeamRadio", "TimingAppData", "TimingData", "TimingStats", "TrackStatus", "WeatherData", "Position.z", "CarData.z",
-  "TopThree", "LapCount",
+  "Heartbeat",
+  "DriverList",
+  "ExtrapolatedClock",
+  "RaceControlMessages",
+  "SessionInfo",
+  "SessionStatus",
+  "SessionData",
+  "TeamRadio",
+  "TimingAppData",
+  "TimingData",
+  "TimingStats",
+  "TrackStatus",
+  "WeatherData",
+  "Position.z",
+  "CarData.z",
+  "TopThree",
+  "LapCount",
 ];
 
 /**
@@ -61,7 +75,10 @@ export class LiveSource implements DataSource {
       });
       if (!neg.ok) throw new Error(`negotiate respondió HTTP ${neg.status}`);
       // El balanceador de F1 fija el backend por cookie: sin ella el WebSocket cae en otro nodo y falla.
-      const cookie = neg.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+      const cookie = neg.headers
+        .getSetCookie()
+        .map((c) => c.split(";")[0])
+        .join("; ");
       const { connectionToken } = (await neg.json()) as { connectionToken: string };
       const ws = new WebSocket(`wss://${config.liveBase}?id=${encodeURIComponent(connectionToken)}`, {
         headers: { Cookie: cookie },

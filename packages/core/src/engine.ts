@@ -508,8 +508,11 @@ function lapState(line: Obj): LapState {
   if (line.InPit) return "pit";
   if (line.PitOut) return "out";
   const sectors = asList<Obj>(line.Sectors);
-  let n = 0, pb = 0, ob = 0;
-  let sectorOb = false, sectorPb = false;
+  let n = 0,
+    pb = 0,
+    ob = 0;
+  let sectorOb = false,
+    sectorPb = false;
   for (const s of sectors) {
     const segs = asList<Obj>(s.Segments);
     let done = segs.length > 0;
@@ -544,7 +547,10 @@ function lapState(line: Obj): LapState {
 
 /** Valida que los puntos formen una vuelta cerrada y sin saltos. */
 function toOutline(pts: XY[]): TrackOutline | null {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const [x, y] of pts) {
     if (x < minX) minX = x;
     if (x > maxX) maxX = x;

@@ -35,7 +35,10 @@ function slot(): Promise<void> {
 
 /** Error de HTTP con su código, para decidir si vale reintentar o partir el pedido. */
 class HttpError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -43,7 +46,9 @@ class HttpError extends Error {
 async function get(endpoint: string, params: Record<string, string | number>): Promise<Row[]> {
   // OpenF1 usa operadores en la clave (`date>...`), así que la query se arma a mano.
   const qs = Object.entries(params)
-    .map(([k, v]) => `${encodeURIComponent(k).replace(/%3E/g, ">").replace(/%3C/g, "<")}${/[<>]$/.test(k) ? "" : "="}${encodeURIComponent(v)}`)
+    .map(
+      ([k, v]) => `${encodeURIComponent(k).replace(/%3E/g, ">").replace(/%3C/g, "<")}${/[<>]$/.test(k) ? "" : "="}${encodeURIComponent(v)}`,
+    )
     .join("&");
   for (let attempt = 0; ; attempt++) {
     await slot();
@@ -205,7 +210,12 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     let chequered = false;
     for (const r of rcSorted) {
       if (r.flag === "CHEQUERED") chequered = true;
-      else if (String(r.message ?? "").toUpperCase().includes("GREEN LIGHT") && (!partStarts.length || chequered)) {
+      else if (
+        String(r.message ?? "")
+          .toUpperCase()
+          .includes("GREEN LIGHT") &&
+        (!partStarts.length || chequered)
+      ) {
         partStarts.push(at(r.date));
         chequered = false;
       }
@@ -241,7 +251,11 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     if (!byDriver.has(r.driver_number)) byDriver.set(r.driver_number, []);
     byDriver.get(r.driver_number)!.push(r);
   }
-  type Ev = { ts: number; num: number; lap: number } & ({ kind: "sector"; i: number; v: number } | { kind: "lap"; v: number | null } | { kind: "part"; part: number });
+  type Ev = { ts: number; num: number; lap: number } & (
+    | { kind: "sector"; i: number; v: number }
+    | { kind: "lap"; v: number | null }
+    | { kind: "part"; part: number }
+  );
   const events: Ev[] = [];
   partStarts.slice(1).forEach((ts, i) => events.push({ ts, num: 0, lap: 0, kind: "part", part: i + 2 }));
   const lapStart = new Map<string, number>();
@@ -280,7 +294,8 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   }
   events.sort((a, b) => a.ts - b.ts);
 
-  const stintOf = (num: number, lap: number) => d.stints.find((s) => s.driver_number === num && lap >= s.lap_start && lap <= (s.lap_end ?? Infinity));
+  const stintOf = (num: number, lap: number) =>
+    d.stints.find((s) => s.driver_number === num && lap >= s.lap_start && lap <= (s.lap_end ?? Infinity));
   const bestSector: Record<string, number> = {};
   const bestLap = new Map<number, number>();
   let fastest = Infinity;
@@ -476,9 +491,7 @@ async function findSession(startUtc: string): Promise<Row> {
   if (!sessionsCache || sessionsCache.year !== year || Date.now() - sessionsCache.at > 5 * 60_000) {
     sessionsCache = { year, at: Date.now(), rows: await get("sessions", { year }) };
   }
-  const best = sessionsCache.rows
-    .map((r) => ({ r, diff: Math.abs(Date.parse(r.date_start) - start) }))
-    .sort((a, b) => a.diff - b.diff)[0];
+  const best = sessionsCache.rows.map((r) => ({ r, diff: Math.abs(Date.parse(r.date_start) - start) })).sort((a, b) => a.diff - b.diff)[0];
   if (!best || best.diff > 3 * 3600_000) throw new Error("OpenF1 no tiene una sesión en ese horario");
   return best.r;
 }
@@ -500,7 +513,11 @@ export async function findOpenF1Session(startUtc: string): Promise<OpenF1Session
  * Baja la sesión entera de OpenF1 y la devuelve como mensajes del feed de F1 (sin normalizar ni ordenar).
  * `withCar` suma la telemetría (`car_data`): otros 20 pedidos, así que solo se pide cuando hace falta.
  */
-export async function loadOpenF1Session(startUtc: string, onStep: (s: string) => void, opts: { withCar?: boolean } = {}): Promise<RawMessage[]> {
+export async function loadOpenF1Session(
+  startUtc: string,
+  onStep: (s: string) => void,
+  opts: { withCar?: boolean } = {},
+): Promise<RawMessage[]> {
   onStep("buscando la sesión en OpenF1");
   const session = await findSession(startUtc);
   const key = session.session_key;
@@ -556,7 +573,8 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
       Array.from({ length: 3 }, async () => {
         for (let drv = carQueue.shift(); drv; drv = carQueue.shift()) {
           const rows = await getRange("car_data", { session_key: key, driver_number: drv.driver_number }, from, to);
-          for (const r of rows) car.push(r.driver_number, Date.parse(r.date), r.speed ?? 0, r.rpm ?? 0, r.n_gear ?? 0, r.throttle ?? 0, r.brake ?? 0);
+          for (const r of rows)
+            car.push(r.driver_number, Date.parse(r.date), r.speed ?? 0, r.rpm ?? 0, r.n_gear ?? 0, r.throttle ?? 0, r.brake ?? 0);
           onStep(`bajando telemetría de OpenF1 (${++done}/${drivers.length})`);
         }
       }),
@@ -564,7 +582,21 @@ export async function loadOpenF1Session(startUtc: string, onStep: (s: string) =>
   }
 
   onStep("procesando");
-  return adaptOpenF1({ session, meeting: meetings[0], drivers, laps, intervals, position, stints, pit, raceControl, weather, results, location, car });
+  return adaptOpenF1({
+    session,
+    meeting: meetings[0],
+    drivers,
+    laps,
+    intervals,
+    position,
+    stints,
+    pit,
+    raceControl,
+    weather,
+    results,
+    location,
+    car,
+  });
 }
 
 /** Calendario del año según OpenF1, en el mismo formato que el del archivo de F1 (sin `path`). */
@@ -581,7 +613,15 @@ export async function listOpenF1Meetings(year: number): Promise<MeetingEntry[]> 
       sessions: sessions
         .filter((s) => s.meeting_key === m.meeting_key && !s.is_cancelled)
         .sort((a, b) => Date.parse(a.date_start) - Date.parse(b.date_start))
-        .map((s) => ({ key: s.session_key, name: s.session_name, type: s.session_type, startUtc: iso(s.date_start), endUtc: iso(s.date_end), path: null, data: null })),
+        .map((s) => ({
+          key: s.session_key,
+          name: s.session_name,
+          type: s.session_type,
+          startUtc: iso(s.date_start),
+          endUtc: iso(s.date_end),
+          path: null,
+          data: null,
+        })),
     }))
     .filter((m) => m.sessions.length);
 }
