@@ -2,10 +2,12 @@ import { activeBattles, neutralAt, PARAMS, type Params, projections, visible } f
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controls } from "./Controls";
 import { useCircuit } from "./circuit";
+import { DominancePanel } from "./DominancePanel";
 import { EventPanel } from "./EventPanel";
 import { jumpTarget, neighbour, useEventFilter, useHighWater } from "./events";
 import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
 import { type ChartSeries, GapChart, SERIES_COLORS } from "./GapChart";
+import { IdealPanel } from "./IdealPanel";
 import { LivePanel } from "./LivePanel";
 import { PacePanel } from "./PacePanel";
 import { RaceControl } from "./RaceControl";
@@ -255,6 +257,17 @@ export function SessionView({ target }: { target: Target }) {
               />
             )}
             {insights?.isRace && <PacePanel insights={insights} now={time} selected={selectedColors} />}
+            {insights && !insights.isRace && <IdealPanel insights={insights} now={time} />}
+            {target.mode === "replay" && (
+              <DominancePanel
+                source={target.source}
+                now={time}
+                outline={t.outline}
+                circuit={circuit}
+                insights={insights}
+                selected={selectedColors}
+              />
+            )}
             <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />
             <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />
           </aside>

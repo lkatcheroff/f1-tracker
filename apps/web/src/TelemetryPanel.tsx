@@ -16,6 +16,7 @@ import {
   sectorTimes,
   type TelemetryLap,
   type TrackOutline,
+  topSpeeds,
 } from "@f1/core";
 import { useEffect, useMemo, useState } from "react";
 import type { CircuitInfo } from "./circuit";
@@ -111,6 +112,7 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
   const refLap = ref?.lap ?? null;
 
   const x = useMemo(() => distanceAxis(tel), [tel]);
+  const speeds = useMemo(() => topSpeeds(pool, tel.length).slice(0, 8), [tel.length, pool]);
   const charts = useMemo(() => {
     const none = x.map(() => null);
     const clip = (arr?: number[]) => (arr ? arr.map((v, i) => (i <= upto ? v : null)) : none);
@@ -443,6 +445,29 @@ function Body({ tel, snap, outline, circuit, spoilerFree }: Omit<Props, "source"
                   )}
                 </tbody>
               </table>
+              <table className="tel-table">
+                <thead>
+                  <tr>
+                    <th>Velocidad máxima</th>
+                    <th className="num">km/h</th>
+                    <th className="num">Vuelta</th>
+                    <th className="num">A los</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {speeds.map((t) => (
+                    <tr key={t.driver} className={t.driver === a ? "tel-self" : ""}>
+                      <td>{tla(t.driver)}</td>
+                      <td className="num">{t.kmh}</td>
+                      <td className="num">V{t.lap}</td>
+                      <td className="num">{t.atM} m</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="chart-note">
+                Máxima registrada por la telemetría, a unas 4 muestras por segundo: puede quedar unos km/h debajo de la trampa de velocidad.
+              </p>
               <p className="chart-note">
                 Los sectores salen de la traza de cada vuelta (suman el tiempo oficial). Rojo: {tla(lapA.d)} pierde tiempo en ese tramo;
                 verde: lo gana. Las líneas verticales del gráfico son la meta, el inicio de S2 y S3 y los números de curva.

@@ -540,3 +540,65 @@ export function currentLap(t: SessionTelemetry, driver: string, now: number): { 
   while (upto + 1 < lap.t.length && lap.t[upto + 1] <= elapsed) upto++;
   return { lap, upto };
 }
+
+// --- análisis sobre la telemetría ---
+
+export interface DominanceSegment {
+  /** fracción del trazado donde empieza y termina el tramo */
+  from: number;
+  to: number;
+  /** quién tardó menos; null si la diferencia es menor al empate */
+  winner: string | null;
+  /** cuánto más rápido que el segundo, ms */
+  marginMs: number;
+  /** tiempo de cada piloto en el tramo, ms */
+  times: Record<string, number>;
+}
+
+/**
+ * Quién fue más rápido en cada tramo del circuito, comparando una vuelta por piloto (en general, la mejor hasta el
+ * momento). La vuelta se alinea por posición y se escala al tiempo oficial, así que la precisión por tramo es
+ * aproximada: diferencias de pocas centésimas son ruido, y por eso hay un umbral de empate.
+ */
+export function dominance(laps: Record<string, TelemetryLap>, segments: number, tieMs: number): DominanceSegment[] {
+  const drivers = Object.keys(laps);
+  if (drivers.length < 2) return [];
+  return Array.from({ length: segments }, (_, i) => {
+    const from = i / segments;
+    const to = (i + 1) / segments;
+    const times: Record<string, number> = {};
+    for (const d of drivers) times[d] = timeAtFraction(laps[d], to) - timeAtFraction(laps[d], from);
+    const ranked = Object.entries(times).sort((a, b) => a[1] - b[1]);
+    const marginMs = ranked[1][1] - ranked[0][1];
+    return { from, to, winner: marginMs < tieMs ? null : ranked[0][0], marginMs, times };
+  });
+}
+
+export interface TopSpeed {
+  driver: string;
+  kmh: number;
+  lap: number;
+  /** a qué distancia de la meta, m */
+  atM: number;
+}
+
+/**
+ * La velocidad máxima de cada piloto según la telemetría (unas 4 muestras por segundo: puede quedar unos km/h por
+ * debajo del valor de la trampa de velocidad). Ordenado de mayor a menor.
+ */
+export function topSpeeds(laps: TelemetryLap[], length: number): TopSpeed[] {
+  const best = new Map<string, TopSpeed>();
+  for (const l of laps) {
+    let max = 0;
+    let at = 0;
+    for (let i = 0; i < l.v.length; i++) {
+      if (l.v[i] > max) {
+        max = l.v[i];
+        at = i;
+      }
+    }
+    const cur = best.get(l.d);
+    if (!cur || max > cur.kmh) best.set(l.d, { driver: l.d, kmh: max, lap: l.n, atM: Math.round((at / (l.v.length - 1)) * length) });
+  }
+  return [...best.values()].sort((a, b) => b.kmh - a.kmh);
+}

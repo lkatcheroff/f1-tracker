@@ -88,7 +88,20 @@ export async function loadSessions(year: number): Promise<SessionsResponse> {
  * Telemetría de la sesión abierta, o null si no hay. Se pide recién cuando el usuario abre el panel:
  * pesa 1 a 2 MB. En el sitio estático la publica la Action junto con cada sesión; en local la arma el server.
  */
-export async function loadTelemetry(source: string): Promise<SessionTelemetry | null> {
+const telemetryCache = new Map<string, Promise<SessionTelemetry | null>>();
+
+/** Con caché: los paneles que la usan comparten una sola descarga. */
+export function loadTelemetry(source: string): Promise<SessionTelemetry | null> {
+  let hit = telemetryCache.get(source);
+  if (!hit) {
+    hit = fetchTelemetry(source);
+    telemetryCache.set(source, hit);
+    hit.catch(() => telemetryCache.delete(source));
+  }
+  return hit;
+}
+
+async function fetchTelemetry(source: string): Promise<SessionTelemetry | null> {
   let url: string;
   if (STATIC) {
     const key = /^mirror:s\/(\d+)\./.exec(source)?.[1];
