@@ -93,7 +93,11 @@ suite("crónica: una frase por tipo de evento", () => {
       ev("start", ["3"], { gainDriver: "3", gainN: 1, lossDriver: null, lossN: 0, moved: 2 }, 1),
       "Largada: De La Rosa gana 1 puesto.",
     ],
-    ["duelo", ev("battle", ["1", "2"], { gapSec: 0.6, laps: 4 }), "V22 · Duelo entre Quintana y Rivera: 0,6 s desde hace 4 vueltas."],
+    [
+      "duelo",
+      ev("battle", ["1", "2"], { phase: "start", gapSec: 0.6, laps: 4 }),
+      "V22 · Duelo entre Quintana y Rivera: 0,6 s desde hace 4 vueltas.",
+    ],
     [
       "undercut",
       ev("undercut", ["1", "2"], { success: true, gainSec: 1.8 }, 31),
@@ -105,9 +109,24 @@ suite("crónica: una frase por tipo de evento", () => {
       "V31 · Overcut de Rivera sobre Quintana: gana 2,3 s alargando el stint.",
     ],
     [
-      "undercut que no sale",
+      "undercut que recorta pero no alcanza",
       ev("undercut", ["1", "2"], { success: false, gainSec: 0.4 }, 31),
-      "V31 · Quintana para primero pero no le saca ventaja a Rivera (0,4 s).",
+      "V31 · Quintana para primero y le recorta 0,4 s a Rivera, pero no le alcanza.",
+    ],
+    [
+      "undercut que sale mal",
+      ev("undercut", ["1", "2"], { success: false, gainSec: -3.9 }, 31),
+      "V31 · Quintana para primero y pierde 3,9 s contra Rivera.",
+    ],
+    [
+      "fin de un duelo con pasada",
+      ev("battle", ["1", "2"], { phase: "end", result: "passed", laps: 6 }, 30),
+      "V30 · Termina el duelo: Quintana pasó a Rivera.",
+    ],
+    [
+      "fin de un duelo sin pasada",
+      ev("battle", ["1", "2"], { phase: "end", result: "held", laps: 6 }, 30),
+      "V30 · Termina el duelo: Rivera aguantó a Quintana.",
     ],
     ["sin vuelta conocida", ev("retirement", ["2"], {}, null), "Rivera abandona."],
   ];

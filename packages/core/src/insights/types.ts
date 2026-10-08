@@ -86,6 +86,23 @@ export interface PositionChange {
   lap: number | null;
 }
 
+/** Un duelo: dos autos a menos de `BATTLE_GAP_SEC` durante varias vueltas seguidas. */
+export interface Battle {
+  /** el que viene atrás al empezar el duelo */
+  chaser: string;
+  /** el que iba adelante al empezar */
+  ahead: string;
+  fromLap: number;
+  /** vuelta en que se declaró (la que completa `BATTLE_MIN_LAPS`) y cuándo quedó resuelto */
+  declaredLap: number;
+  startTs: number;
+  /** null mientras sigue abierto */
+  endTs: number | null;
+  endLap: number | null;
+  /** "passed" si el orden cambió durante el duelo, "held" si no, "open" si sigue */
+  result: "passed" | "held" | "open";
+}
+
 export interface DataQuality {
   source: "official" | "openf1" | "recording";
   hasPositions: boolean;
@@ -122,6 +139,12 @@ export interface SessionInsights {
   events: InsightEvent[];
   /** franjas neutralizadas, para sombrearlas en la línea de tiempo */
   neutral: NeutralSpan[];
+  /** duelos detectados (el evento `battle` de cada uno sale de acá) */
+  battles: Battle[];
+  /** vueltas de la carrera, si el feed las informa */
+  totalLaps: number | null;
+  /** lo que cuesta una parada en este circuito, segundos, y si es una estimación con los datos de la propia sesión */
+  pitLossSec: { value: number; estimated: boolean };
   /** todos los cambios de posición, con su clase (los sobrepasos son los `onTrack`) */
   changes: PositionChange[];
   dataQuality: DataQuality;

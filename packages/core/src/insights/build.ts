@@ -2,9 +2,12 @@ import { StateEngine } from "../engine";
 import { asList } from "../merge";
 import { parseLapTime } from "../parse";
 import type { RawMessage } from "../types";
+import { findBattles } from "./battles";
 import { PARAMS, type Params } from "./params";
 import { parseSteward } from "./parse";
+import { estimatePitLoss, findStrategyEvents, groupByDriver } from "./strategy";
 import type {
+  Battle,
   ChangeClass,
   DataQuality,
   DataSourceKind,
@@ -23,6 +26,8 @@ export interface BuildOptions {
   /** de dónde salen los mensajes: decide qué se rotula como aproximado */
   source: DataSourceKind;
   params?: Partial<Params>;
+  /** lo que cuesta una parada en este circuito (p. ej. el dato de MultiViewer); si falta se estima con la propia sesión */
+  pitLossSec?: number;
 }
 
 /** Intervalo de tiempo; `to: null` = sigue abierto. */
@@ -111,6 +116,7 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
   let startTs: number | null = null;
   let endTs: number | null = null;
   let leaderLap = 1;
+  let totalLaps: number | null = null;
   let hasPositions = false;
   let hasTelemetry = false;
 
@@ -253,6 +259,7 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
       }
     } else if (m.topic === "LapCount") {
       if (typeof data?.CurrentLap === "number") leaderLap = data.CurrentLap;
+      if (typeof data?.TotalLaps === "number") totalLaps = data.TotalLaps;
     } else if (m.topic === "SessionStatus") {
       if (data?.Status === "Started" && startTs === null) {
         startTs = m.ts;
@@ -564,10 +571,37 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
     }
   }
 
+  // estrategia y duelos: solo tienen sentido en carrera
+  let battles: Battle[] = [];
+  const loss = opts.pitLossSec ?? (isRace ? estimatePitLoss(groupByDriver(laps)) : null);
+  const pitLossSec = { value: loss ?? 22, estimated: opts.pitLossSec === undefined };
+  if (isRace) {
+    events.push(...findStrategyEvents(laps, P, pitLossSec.value, pitLossSec.estimated || loss === null));
+    const found = findBattles(laps, P);
+    battles = found.battles;
+    events.push(...found.events);
+  }
+
   // identificadores estables y orden final
   for (const e of events) e.id = `${e.kind}:${e.ts}:${e.drivers.join("-")}`;
   events.sort((a, b) => a.ts - b.ts || a.id.localeCompare(b.id));
 
   const quality: DataQuality = { source: src, hasPositions, hasTelemetry, approximations: QUALITY[src] };
-  return { isRace, startTs, endTs, drivers, grid, final, laps, stints, events, neutral, changes, dataQuality: quality };
+  return {
+    isRace,
+    startTs,
+    endTs,
+    drivers,
+    grid,
+    final,
+    laps,
+    stints,
+    events,
+    neutral,
+    battles,
+    totalLaps,
+    pitLossSec,
+    changes,
+    dataQuality: quality,
+  };
 }

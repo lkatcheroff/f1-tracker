@@ -55,8 +55,6 @@ export function syntheticDrivers(n: number): SyntheticDriver[] {
   });
 }
 
-const pad = (n: number, w = 2) => String(n).padStart(w, "0");
-
 /** 107607 → "1:47.607" */
 export function fmtLap(ms: number): string {
   const m = Math.floor(ms / 60000);
@@ -450,6 +448,101 @@ export class RaceBuilder {
       .sort((a, b) => a[0].ts - b[0].ts || a[1] - b[1])
       .map(([m]) => structuredClone(m));
   }
+}
+
+export interface SimOptions {
+  laps: number;
+  /** tiempo base de vuelta por piloto, ms (por defecto 90 000 + 400 por puesto de grilla) */
+  base?: Record<string, number>;
+  /** tiempo de una vuelta: recibe el piloto, la vuelta, la edad del neumático (1 = primera vuelta con el juego) y si es vuelta de salida */
+  lapMs?: (num: string, lap: number, tyreAge: number, outLap: boolean) => number;
+  /** paradas al final de la vuelta indicada, con el compuesto que se monta */
+  pits?: Record<string, { lap: number; compound?: string }[]>;
+  /** lo que cuesta una parada, ms: se suma a la vuelta de salida */
+  pitLossMs?: number;
+  /** diferencia de largada entre autos consecutivos, ms */
+  startGapMs?: number;
+  /** pilotos que abandonan: al final de la vuelta indicada */
+  retire?: Record<string, number>;
+  /** Safety Car desde que el líder cierra la vuelta `from` hasta que cierra la `to` */
+  safetyCar?: { from: number; to: number };
+}
+
+/**
+ * Corre una carrera a nivel de vuelta: cada piloto suma sus tiempos, el orden y los gaps salen de los cruces de meta
+ * (como en el feed, el orden cambia al cruzar la línea), y las paradas costan `pitLossMs`.
+ * Emite los mismos mensajes que los métodos del builder; sirve para escenarios largos como undercuts o duelos.
+ * Hay que llamarla con la carrera ya largada (`start()`).
+ */
+export function simulate(r: RaceBuilder, opts: SimOptions): RaceBuilder {
+  const pitLoss = opts.pitLossMs ?? 22_000;
+  const startGap = opts.startGapMs ?? 800;
+  const nums = r.drivers.map((d) => d.num);
+  const base = (n: string, i: number) => opts.base?.[n] ?? 90_000 + 400 * i;
+  const t0 = r.now;
+  const cum: Record<string, number> = Object.fromEntries(nums.map((n, i) => [n, t0 + i * startGap]));
+  const age: Record<string, number> = Object.fromEntries(nums.map((n) => [n, 0]));
+  const outNext: Record<string, boolean> = Object.fromEntries(nums.map((n) => [n, false]));
+  const retired = new Set<string>();
+
+  type Ev = { ts: number; kind: "close" | "pitIn" | "pitOut" | "retire"; num: string; lap: number; ms?: number; compound?: string };
+  const evs: Ev[] = [];
+  const cross: Record<string, number[]> = Object.fromEntries(nums.map((n) => [n, [0]]));
+  for (let L = 1; L <= opts.laps; L++) {
+    nums.forEach((n, i) => {
+      if (retired.has(n)) return;
+      const outLap = outNext[n];
+      outNext[n] = false;
+      const a = age[n] + 1;
+      let ms = opts.lapMs ? opts.lapMs(n, L, a, outLap) : base(n, i) + 120 * a;
+      if (outLap) ms += pitLoss;
+      cum[n] += ms;
+      cross[n][L] = cum[n];
+      evs.push({ ts: cum[n], kind: "close", num: n, lap: L, ms });
+      age[n] = a;
+      const stop = opts.pits?.[n]?.find((p) => p.lap === L);
+      if (stop) {
+        evs.push({ ts: cum[n] - 1500, kind: "pitIn", num: n, lap: L });
+        evs.push({ ts: cum[n] + Math.round(pitLoss * 0.9), kind: "pitOut", num: n, lap: L, compound: stop.compound });
+        outNext[n] = true;
+        age[n] = 0;
+      }
+      if (opts.retire?.[n] === L) {
+        retired.add(n);
+        evs.push({ ts: cum[n] + 2000, kind: "retire", num: n, lap: L });
+      }
+    });
+  }
+  evs.sort((x, y) => x.ts - y.ts);
+
+  const done: Record<string, number> = Object.fromEntries(nums.map((n) => [n, 0]));
+  const last: Record<string, number> = Object.fromEntries(nums.map((n) => [n, 0]));
+  let order = [...nums];
+  for (const e of evs) {
+    r.at(Math.max(r.now, e.ts));
+    if (e.kind === "pitIn") r.pitIn(e.num);
+    else if (e.kind === "pitOut") r.pitOut(e.num, { compound: e.compound });
+    else if (e.kind === "retire") r.retire(e.num);
+    else {
+      done[e.num] = e.lap;
+      last[e.num] = e.ts;
+      if (opts.safetyCar && e.num === nums[0] && e.lap === opts.safetyCar.from) r.safetyCar();
+      if (opts.safetyCar && e.num === nums[0] && e.lap === opts.safetyCar.to) r.allClear();
+      const next = nums.filter((n) => !retired.has(n) || done[n] > 0).sort((x, y) => done[y] - done[x] || last[x] - last[y]);
+      const full = [...next, ...nums.filter((n) => !next.includes(n))];
+      const leader = full[0];
+      const i = full.indexOf(e.num);
+      const gapTo = (o: string) => (done[o] >= e.lap ? (cross[e.num][e.lap] - cross[o][e.lap]) / 1000 : "1L");
+      const gap = e.num === leader ? `LAP ${e.lap}` : gapTo(leader);
+      const interval = i === 0 ? undefined : gapTo(full[i - 1]);
+      r.lap(e.num, e.ms ?? 0, { gap, interval });
+      if (full.some((n, k) => n !== order[k])) {
+        r.order(full);
+        order = full;
+      }
+    }
+  }
+  return r;
 }
 
 /** Una carrera completa y corta, con todo lo que hay que cubrir: sobrepaso, parada, Safety Car, retiro, doblado y sanción. */

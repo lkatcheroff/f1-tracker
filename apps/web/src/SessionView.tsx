@@ -1,4 +1,4 @@
-import { neutralAt, visible } from "@f1/core";
+import { activeBattles, neutralAt, PARAMS, type Params, projections, visible } from "@f1/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controls } from "./Controls";
 import { useCircuit } from "./circuit";
@@ -7,6 +7,7 @@ import { jumpTarget, neighbour, useEventFilter, useHighWater } from "./events";
 import { fmtDuration, SESSION_STATUS, store, TRACK_STATUS } from "./format";
 import { type ChartSeries, GapChart, SERIES_COLORS } from "./GapChart";
 import { LivePanel } from "./LivePanel";
+import { PacePanel } from "./PacePanel";
 import { RaceControl } from "./RaceControl";
 import { RaceState } from "./RaceState";
 import { TelemetryPanel } from "./TelemetryPanel";
@@ -85,6 +86,21 @@ export function SessionView({ target }: { target: Target }) {
   const neutralMarks = useMemo(
     () => (insights && filter.set.has("neutralization") ? neutralAt(insights.neutral, limit) : []),
     [insights, limit, filter.set],
+  );
+  // Duelos activos y proyecciones, solo con lo que ya pasó. Se recalculan al cerrarse una vuelta, no en cada cuadro.
+  const closedLaps = useMemo(() => (insights ? insights.laps.filter((l) => l.endTs <= time).length : 0), [insights, time]);
+  const battles = useMemo(() => (insights ? activeBattles(insights.battles, time) : []), [insights, time]);
+  const lapsLeft = snap?.lap ? snap.lap.total - snap.lap.current : null;
+  const projected = useMemo(
+    () =>
+      insights?.isRace
+        ? projections(
+            insights.laps.filter((l) => l.endTs <= time),
+            { ...PARAMS } as Params,
+            lapsLeft,
+          )
+        : [],
+    [insights, closedLaps, lapsLeft],
   );
   const jump = useCallback(
     (e: { seekTs: number }) => {
@@ -226,7 +242,7 @@ export function SessionView({ target }: { target: Target }) {
               instant={(playback?.speed ?? 1) > 2}
               missingReason={noPositions}
             />
-            {insights?.isRace && <RaceState snap={snap} insights={insights} events={happened} />}
+            {insights?.isRace && <RaceState snap={snap} insights={insights} events={happened} battles={battles} projections={projected} />}
             {insights && (
               <EventPanel
                 insights={insights}
@@ -238,6 +254,7 @@ export function SessionView({ target }: { target: Target }) {
                 onResetHighWater={() => resetHighWater(time)}
               />
             )}
+            {insights?.isRace && <PacePanel insights={insights} now={time} selected={selectedColors} />}
             <GapChart history={t.history} version={t.histVersion} series={series} race={snap.lap !== null} />
             <RaceControl messages={snap.raceControl} count={snap.raceControl.length} />
           </aside>

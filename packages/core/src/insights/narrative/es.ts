@@ -67,12 +67,22 @@ export const es = {
     if (d.lossDriver && Number(d.lossN) > 0) parts.push(`${f.names[1] ?? f.names[0]} pierde ${places(Number(d.lossN))}`);
     return `Largada: ${parts.join("; ") || "sin cambios"}.`;
   },
-  battle: (f: Facts, d: Data) =>
-    `${lap(f)}Duelo entre ${f.names[0]} y ${f.names[1]}: ${num1(Number(d.gapSec))} s${d.laps ? ` desde hace ${d.laps} vueltas` : ""}.`,
+  battle: (f: Facts, d: Data) => {
+    if (d.phase === "end") {
+      return d.result === "passed"
+        ? `${lap(f)}Termina el duelo: ${f.names[0]} pasó a ${f.names[1]}.`
+        : `${lap(f)}Termina el duelo: ${f.names[1]} aguantó a ${f.names[0]}.`;
+    }
+    return `${lap(f)}Duelo entre ${f.names[0]} y ${f.names[1]}: ${num1(Number(d.gapSec))} s desde hace ${d.laps} vueltas.`;
+  },
   undercut: (f: Facts, d: Data) =>
     `${lap(f)}Undercut de ${f.names[0]} sobre ${f.names[1]}: gana ${num1(Number(d.gainSec))} s con la parada.`,
   overcut: (f: Facts, d: Data) =>
     `${lap(f)}Overcut de ${f.names[0]} sobre ${f.names[1]}: gana ${num1(Number(d.gainSec))} s alargando el stint.`,
-  failedUndercut: (f: Facts, d: Data) =>
-    `${lap(f)}${f.names[0]} para primero pero no le saca ventaja a ${f.names[1]}${d.gainSec ? ` (${num1(Number(d.gainSec))} s)` : ""}.`,
+  failedUndercut: (f: Facts, d: Data) => {
+    const gain = Number(d.gainSec);
+    return gain > 0
+      ? `${lap(f)}${f.names[0]} para primero y le recorta ${num1(gain)} s a ${f.names[1]}, pero no le alcanza.`
+      : `${lap(f)}${f.names[0]} para primero y pierde ${num1(Math.abs(gain))} s contra ${f.names[1]}.`;
+  },
 };

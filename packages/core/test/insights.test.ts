@@ -3,7 +3,6 @@ import { buildInsights, insightsAt, neutralAt, PARAMS, parseSteward, type RawMes
 import { RaceBuilder } from "./builders";
 
 const T0 = 10_000;
-const LAP = 90_000;
 const DEBOUNCE = PARAMS.OVERTAKE_DEBOUNCE_MS;
 
 const run = (r: RaceBuilder, source: "official" | "openf1" | "recording" = "official"): SessionInsights =>
@@ -248,7 +247,7 @@ describe("cambios de posición y sobrepasos", () => {
   it("sin estados intermedios inválidos: un mensaje con posiciones repetidas se ignora hasta que se corrige", () => {
     const r = started(3);
     const msgs = r.build();
-    const lines = (num: string, pos: number) => ({ Line: pos, Position: String(pos) });
+    const lines = (_num: string, pos: number) => ({ Line: pos, Position: String(pos) });
     const extra: RawMessage[] = [
       { topic: "TimingData", ts: 60_000, data: { Lines: { 2: lines("2", 1) } } }, // 1 y 2 en P1: inválido
       { topic: "TimingData", ts: 60_000, data: { Lines: { 1: lines("1", 2) } } }, // mismo ts: completa el cambio

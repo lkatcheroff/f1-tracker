@@ -2,7 +2,17 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildInsights, insightsAt, parseJsonStream, parseStreamTs, prepareMessages, REPLAY_TOPICS, type SessionInsights } from "../src";
+import {
+  buildInsights,
+  insightsAt,
+  PARAMS,
+  paceStints,
+  parseJsonStream,
+  parseStreamTs,
+  prepareMessages,
+  REPLAY_TOPICS,
+  type SessionInsights,
+} from "../src";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const RACE = path.join(ROOT, "fixtures/2026-09-26_Azerbaijan_Grand_Prix_Race");
@@ -87,6 +97,19 @@ describe.skipIf(!HAS_RACE)("[requiere datos reales] análisis de la carrera de B
     expect(lap("63", 32)).toMatchObject({ inLap: false, outLap: true });
     expect(lap("63", 14)).toMatchObject({ inLap: false, outLap: false, neutralized: false, lapTimeMs: 107_566, position: 1 });
     expect(ins.laps.filter((l) => l.neutralized).length).toBeGreaterThan(100);
+  });
+
+  it("estima el costo de una parada con la propia sesión y detecta duelos; la tendencia de ritmo es negativa por el combustible", () => {
+    expect(ins.pitLossSec.estimated).toBe(true);
+    expect(ins.pitLossSec.value).toBeGreaterThan(20);
+    expect(ins.pitLossSec.value).toBeLessThan(30);
+    expect(ins.totalLaps).toBe(51);
+    expect(ins.battles.length).toBeGreaterThan(10);
+    const pace = paceStints(ins.stints, { ...PARAMS }).find((p) => p.driver === "63" && p.stint === 0)!;
+    expect(pace.slope).toBeLessThan(0); // el auto se aliviana más rápido de lo que se gastan los neumáticos
+    expect(pace.n).toBeGreaterThan(15);
+    // Bakú: casi todas las paradas fueron con Safety Car, y esos pares se descartan
+    expect(ins.events.filter((e) => e.kind === "undercut" || e.kind === "overcut").length).toBeLessThanOrEqual(2);
   });
 
   it("la largada es un solo evento", () => {
