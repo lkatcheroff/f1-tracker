@@ -1,6 +1,48 @@
 # F1 Tracker
 
-Página personal para seguir sesiones de F1 (gaps, tiempos, neumáticos, mapa) en dos modos: **replay** sincronizado con el video y **live**. Proyecto no oficial, sin afiliación con Formula 1.
+![F1 Tracker: carrera con eventos sobre la barra de avance, torre de tiempos y mapa](docs/img/desktop-race.png)
+
+**Español.** Tracker personal de F1 para ver una sesión sincronizada con el video: torre de tiempos, mapa, gaps, telemetría y una línea de eventos (sobrepasos, paradas, undercuts, Safety Car) sobre la barra de avance, con crónica en español y sin spoilers. Corre entero en el navegador, sin server, y se actualiza solo.
+
+**English.** A personal F1 tracker to follow a session in sync with the video: timing tower, track map, gaps, telemetry and an event timeline (overtakes, pit stops, undercuts, Safety Cars) over the scrubber, with a Spanish race log and spoiler-free by default. It runs fully in the browser, no server, and updates itself.
+
+**Demo: <https://lkatcheroff.github.io/f1-tracker/>** · Proyecto no oficial, sin afiliación con Formula 1 · Unofficial, not affiliated with Formula 1.
+
+## Qué hace
+
+- **Replay sincronizado con el video**: apretás *Sync: largada* cuando se apagan los semáforos y el resto sigue solo. Con *Sin spoilers* la barra va por vuelta y nada muestra lo que todavía no viste.
+- **Eventos sobre la barra** y crónica generada por reglas (sin IA): sobrepasos, cambios de líder, paradas, vuelta rápida, abandonos, sanciones, duelos, undercut y overcut. Un clic salta al momento.
+- **Estrategia**: ritmo por neumático, proyección de "lo alcanza en N vueltas", dominio por tramos de pista, vuelta ideal y velocidades máximas.
+- **Telemetría y comparación** entre vueltas y pilotos, con mini-sectores en la torre.
+- **Clasificación** con corte, eliminados y tiempo restante de cada parte.
+- **Móvil**: pestañas (Torre, Mapa, Gaps, Eventos, Telemetría) y controles táctiles.
+
+| Eventos | Móvil: torre | Móvil: mapa |
+|---|---|---|
+| ![Panel de eventos](docs/img/desktop-events.png) | ![Torre en el teléfono](docs/img/mobile-tower.png) | ![Mapa en el teléfono](docs/img/mobile-map.png) |
+
+## Cómo está hecho
+
+```
+ OpenF1 ──► Action (cada 15 min) ──► sitio estático ──► Web Worker ─┐
+ Feed F1 ──► server local ─────────────────────────────► WebSocket ─┤
+                                                                    ▼
+                                         ReplayPlayer + StateEngine (mismo código)
+                                                                    ▼
+                                         buildInsights: eventos, crónica, estrategia
+```
+
+- **Un solo motor.** El replay y el live usan el mismo `StateEngine` y el mismo formato de mensajes; cambia solo la fuente. En el sitio estático el motor corre en un Web Worker.
+- **`packages/core` es puro**: sin red ni disco, así se prueba con carreras sintéticas y corre igual en el server y en el navegador.
+- **Reglas determinísticas.** El análisis (`buildInsights`) recorre la sesión una vez, tarda ~140 ms en una carrera completa y da el mismo resultado con cualquier fuente.
+- **Sin spoilers por construcción.** Una sola compuerta decide qué eventos y vueltas son visibles en cada instante.
+- **Por qué OpenF1 en el sitio publicado.** F1 le responde 403 a los servidores de GitHub (verificado, ver `docs/spikes.md`), así que la Action arma las sesiones desde OpenF1. Medido contra el feed oficial: mismos 287 cambios de posición en Bakú y telemetría casi idéntica.
+
+## Datos y límites
+
+Cada sesión avisa en pantalla cuando sus datos no vienen del archivo oficial. Con OpenF1 faltan el Safety Car en el mapa y los mini-sectores reales, y los abandonos y el estado de pista son aproximados. El live necesita el server local y no trae posiciones sin cuenta de F1. Detalle y enlaces en [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md); mediciones en [`docs/spikes.md`](docs/spikes.md).
+
+Datos de [OpenF1](https://openf1.org); trazados y curvas de [MultiViewer](https://multiviewer.app). F1 y los nombres relacionados son marcas de sus dueños.
 
 ## Uso
 
@@ -96,6 +138,8 @@ npm run check          # tipos + lint + tests: lo que tiene que estar en verde a
 npm run format         # formatea con Biome
 npm run fixture        # baja la carrera de Azerbaiyán 2026 a fixtures/ (25 MB, solo desde una conexión hogareña)
 npm run fixture:schema # regenera packages/core/test/schema.json (la forma de los mensajes, sin valores)
+npm run e2e:mobile      # aceptación en 390×844 (necesita `npm run dev` y Chrome; no corre en CI)
+npm run screenshots    # regenera docs/img/ (ídem)
 ```
 
 **Dos tipos de tests**, con el mismo comando:

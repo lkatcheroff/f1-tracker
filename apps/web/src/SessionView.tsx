@@ -2,6 +2,7 @@ import { activeBattles, neutralAt, PARAMS, type Params, projections, visible } f
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controls } from "./Controls";
 import { useCircuit } from "./circuit";
+import { DataQualityNote } from "./DataQualityNote";
 import { DominancePanel } from "./DominancePanel";
 import { EventPanel } from "./EventPanel";
 import { jumpTarget, neighbour, useEventFilter, useHighWater } from "./events";
@@ -275,6 +276,7 @@ export function SessionView({ target }: { target: Target }) {
           }
         />
       )}
+      {insights && <DataQualityNote insights={insights} />}
       {live && <LivePanel live={live} now={snap?.time ?? Date.now()} />}
 
       {t.error && (
