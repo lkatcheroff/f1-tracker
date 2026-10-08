@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,green \"npm run dev -w @f1/server\" \"npm run dev -w @f1/web\"",
     "test": "vitest run",
-    "typecheck": "tsc -p packages/core/tsconfig.test.json --noEmit && tsc -p packages/openf1 --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit && tsc -p scripts --noEmit",
+    "typecheck": "tsc -p packages/core/tsconfig.test.json --noEmit && tsc -p packages/openf1/tsconfig.test.json --noEmit && tsc -p apps/server --noEmit && tsc -p apps/web --noEmit && tsc -p scripts --noEmit",
     "fixture": "node scripts/fetch-fixture.mjs",
     "probe:live": "node scripts/probe-live.mjs",
     "mirror": "tsx scripts/mirror.ts",

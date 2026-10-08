@@ -1,7 +1,28 @@
 import type { MeetingEntry, RawMessage } from "@f1/core";
 
 const BASE = "https://api.openf1.org/v1/";
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Dependencias de red y de tiempo, reemplazables para probar el cliente sin salir a internet ni esperar. */
+interface Env {
+  fetch: typeof fetch;
+  sleep: (ms: number) => Promise<void>;
+  /** Respeta el límite de pedidos del plan gratuito. Los tests lo apagan. */
+  throttle: boolean;
+}
+const defaults: Env = {
+  fetch: (...a) => fetch(...a),
+  sleep: (ms) => new Promise<void>((r) => setTimeout(r, ms)),
+  throttle: true,
+};
+let env: Env = defaults;
+
+/** Cambia (o, sin argumentos, restaura) el `fetch`, la espera y el límite de pedidos. Solo para tests. */
+export function configureOpenF1(over: Partial<Env> = {}): void {
+  env = { ...defaults, ...over };
+  sessionsCache = null;
+  sent.length = 0;
+}
+const sleep = (ms: number) => env.sleep(ms);
 
 /**
  * Fallback del replay: arma la sesión a partir del histórico gratuito de OpenF1 (REST normalizado)
@@ -19,6 +40,7 @@ const sent: number[] = [];
 let gate: Promise<void> = Promise.resolve();
 
 function slot(): Promise<void> {
+  if (!env.throttle) return Promise.resolve();
   const next = gate.then(async () => {
     for (;;) {
       const now = Date.now();
@@ -52,7 +74,7 @@ async function get(endpoint: string, params: Record<string, string | number>): P
     .join("&");
   for (let attempt = 0; ; attempt++) {
     await slot();
-    const res = await fetch(`${BASE}${endpoint}?${qs}`, { signal: AbortSignal.timeout(120_000) });
+    const res = await env.fetch(`${BASE}${endpoint}?${qs}`, { signal: AbortSignal.timeout(120_000) });
     if (res.status === 404) return [];
     // 429 (límite de pedidos) y 5xx son pasajeros: se reintenta con espera creciente.
     if ((res.status === 429 || res.status >= 500) && attempt < 3) {
