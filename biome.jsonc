@@ -10,7 +10,10 @@
       "!docs",
       "!**/*.md",
       "!**/*.svg",
-      "!packages/core/test/schema.json"
+      "!packages/core/test/schema.json",
+      // datos generados por `npm run transcribe`: se versionan tal cual salen
+      "!transcripts",
+      "!.venv-whisper"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
