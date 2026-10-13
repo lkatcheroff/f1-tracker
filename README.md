@@ -15,7 +15,8 @@
 - **Estrategia**: ritmo por neumático, proyección de "lo alcanza en N vueltas", dominio por tramos de pista, vuelta ideal y velocidades máximas.
 - **Telemetría y comparación** entre vueltas y pilotos, con mini-sectores en la torre.
 - **Clasificación** con corte, eliminados y tiempo restante de cada parte.
-- **Móvil**: pestañas (Torre, Mapa, Gaps, Eventos, Telemetría) y controles táctiles.
+- **Tiempo de sesión**: en práctica y clasificación se ve siempre cuánto queda (y de qué parte), también con el reloj detenido por una bandera roja. Tocándolo se abre **Ir a**: "faltan 3:15 de la Q2" lleva a ese momento.
+- **Móvil y app instalable**: pestañas (Torre, Mapa, Gaps, Eventos, Telemetría), controles táctiles y se instala en Android como una app (ver abajo).
 
 | Eventos | Móvil: torre | Móvil: mapa |
 |---|---|---|
@@ -38,6 +39,16 @@
 - **Sin spoilers por construcción.** Una sola compuerta decide qué eventos y vueltas son visibles en cada instante.
 - **Por qué OpenF1 en el sitio publicado.** F1 le responde 403 a los servidores de GitHub (verificado, ver `docs/spikes.md`), así que la Action arma las sesiones desde OpenF1. Medido contra el feed oficial: mismos 287 cambios de posición en Bakú y telemetría casi idéntica.
 
+## Instalar en el teléfono (Android)
+
+Es una app web instalable (PWA): no pasa por la Play Store.
+
+1. Abrí <https://lkatcheroff.github.io/f1-tracker/> en **Chrome** desde el teléfono.
+2. Tocá **Instalar app** (arriba, en la lista de sesiones) o el menú ⋮ → *Instalar app* / *Agregar a la pantalla principal*.
+3. Queda un ícono del auto de F1 en el cajón de apps. Se abre en pantalla completa.
+
+Una vez abierta, la app arranca sin conexión y guarda las últimas sesiones que miraste (hasta 24 archivos), así se pueden repasar sin datos móviles. Con conexión se actualiza sola. El calendario y las sesiones nuevas necesitan red.
+
 ## Datos y límites
 
 Cada sesión avisa en pantalla cuando sus datos no vienen del archivo oficial. Con OpenF1 faltan el Safety Car en el mapa y los mini-sectores reales, y los abandonos y el estado de pista son aproximados. El live necesita el server local y no trae posiciones sin cuenta de F1. Detalle y enlaces en [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md); mediciones en [`docs/spikes.md`](docs/spikes.md).
@@ -58,6 +69,8 @@ Abre `http://localhost:5173`. El server propio corre en `127.0.0.1:8787` (se cam
 1. Elegí la sesión en la lista (no muestra resultados).
 2. Poné el video. Cuando se apagan los semáforos, apretá **Sync: largada**.
 3. Si quedó corrido, usá **Ajuste fino** (±1 s, ±5 s) o el campo **Offset**. El offset se recuerda por sesión y se aplica en el próximo sync.
+
+**Tiempo de sesión.** En práctica y clasificación, el botón grande con el tiempo que queda abre **Ir a**: elegís la parte (Q1, Q2, Q3), escribís cuánto falta (`3:15`) y salta a ese momento. Los atajos *Inicio*, *10:00*, *5:00*, *1:00* y *Fin* llevan a esos puntos de la parte. La barra de avance sigue al dedo mientras la arrastrás y muestra cuánto faltaría en ese punto; los botones ±5 s y ±1 min (en *Ajustes* en el teléfono) sirven para el ajuste fino. Con el archivo oficial el reloj es el de la transmisión; con OpenF1 se reconstruye (ver `docs/DATA_SOURCES.md`).
 
 Atajos: espacio = play/pausa, ←/→ = ±5 s. La posición se guarda para retomar. Agregando `?t=<segundos>` a la URL de un replay se abre en ese punto.
 
@@ -140,6 +153,8 @@ npm run fixture        # baja la carrera de Azerbaiyán 2026 a fixtures/ (25 MB,
 npm run fixture:schema # regenera packages/core/test/schema.json (la forma de los mensajes, sin valores)
 npm run e2e:mobile      # aceptación en 390×844 (necesita `npm run dev` y Chrome; no corre en CI)
 npm run screenshots    # regenera docs/img/ (ídem)
+npm run icons          # regenera los íconos de la app instalable (ídem)
+npm run e2e:pwa        # manifiesto, íconos, service worker y apertura sin conexión (necesita el sitio estático servido; ver el encabezado del script)
 ```
 
 **Dos tipos de tests**, con el mismo comando:

@@ -1,6 +1,7 @@
 import type { MeetingEntry, SessionEntry, SessionsResponse } from "@f1/core";
 import { useEffect, useState } from "react";
 import { fmtLocalDateTime, store } from "./format";
+import { InstallApp } from "./InstallApp";
 import { loadSessions, STATIC } from "./transport";
 
 const THIS_YEAR = new Date().getFullYear();
@@ -103,6 +104,7 @@ export function Home() {
             Seguir en vivo
           </a>
         )}
+        <InstallApp />
         <label className="field">
           Temporada
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}>

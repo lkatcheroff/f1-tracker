@@ -1,0 +1,18 @@
+{
+  "name": "F1 Tracker",
+  "short_name": "F1 Tracker",
+  "description": "Seguí sesiones de F1 sincronizadas con el video: tiempos, mapa, gaps, telemetría y eventos. Proyecto no oficial.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "categories": ["sports"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

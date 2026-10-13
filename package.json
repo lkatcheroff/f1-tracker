@@ -15,6 +15,8 @@
     "mirror": "tsx scripts/mirror.ts",
     "build:pages": "npm run build -w @f1/web -- --mode pages",
     "e2e:mobile": "tsx scripts/e2e-mobile.ts",
+    "icons": "tsx scripts/icons.ts",
+    "e2e:pwa": "tsx scripts/e2e-pwa.ts",
     "screenshots": "tsx scripts/screenshots.ts",
     "fixture:schema": "tsx scripts/fixture-schema.ts",
     "lint": "biome check .",
