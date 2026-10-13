@@ -12,7 +12,7 @@
 
 - **Replay sincronizado con el video**: apretás *Sync: largada* cuando se apagan los semáforos y el resto sigue solo. Con *Sin spoilers* la barra va por vuelta y nada muestra lo que todavía no viste.
 - **Eventos sobre la barra** y crónica generada por reglas (sin IA): sobrepasos, cambios de líder, paradas, vuelta rápida, abandonos, sanciones, duelos, undercut y overcut. Un clic salta al momento.
-- **Radio de los equipos**: los mensajes de audio de cada piloto, con botón para escucharlos y para ir a ese momento. Solo los que ya pasaron.
+- **Radio de los equipos**: los mensajes de audio de cada piloto, con botón para escucharlos y para ir a ese momento, y su transcripción automática. Solo los que ya pasaron.
 - **Clima**: pista, aire, humedad, viento, presión y lluvia, con su evolución; la crónica avisa cuando empieza o deja de llover.
 - **Parrilla oficial**, **tiempo parado en boxes** (cuando la fuente lo informa) y **campeonato** de pilotos y equipos, que aparece recién al terminar la carrera.
 - **Estrategia**: ritmo por neumático, proyección de "lo alcanza en N vueltas", dominio por tramos de pista, vuelta ideal y velocidades máximas.
@@ -116,6 +116,19 @@ El panel **Telemetría y comparación** (debajo de la torre, se abre a pedido) c
 La telemetría sale de la posición y de `car_data`/`CarData.z` de cada auto, remuestreada en 300 puntos por vuelta. Los tiempos de sector se derivan de esa traza y suman el tiempo oficial de la vuelta. Se descartan las vueltas que no se pueden medir con confianza (la 1 de una carrera, algunas vueltas de boxes bajo Safety Car). En una misma carrera, el feed oficial y OpenF1 dan la misma telemetría: tiempos de vuelta idénticos al milisegundo y 0,7 km/h de diferencia media en velocidad.
 
 La telemetría **no está en el modo live** (sin cuenta de F1 el feed no trae posiciones ni telemetría) ni en las sesiones que se abren directo desde OpenF1 en el navegador.
+
+## Transcripción de la radio
+
+Los audios están en el archivo de F1, que le responde 403 a los servidores de GitHub (verificado). Por eso la transcripción corre **en tu compu** y no en la Action:
+
+```bash
+npm run transcribe:setup        # una sola vez: instala Whisper (código abierto) en .venv-whisper
+npm run transcribe              # transcribe las sesiones recientes que falten (4 por vez)
+npm run transcribe -- --session 11388 --model base   # una sesión puntual, con un modelo más rápido
+git add transcripts && git commit -m "Transcripciones" && git push
+```
+
+El texto queda en `transcripts/` (un archivo por sesión, un mensaje por línea) y la Action lo publica con el sitio. Cada mensaje se transcribe una sola vez. Es una transcripción automática: se equivoca con nombres y jerga, y la pantalla lo avisa. Es gratis: corre en CPU, sin claves ni servicios. El modelo `small` baja unos 480 MB la primera vez.
 
 ## Sitio en GitHub Pages
 

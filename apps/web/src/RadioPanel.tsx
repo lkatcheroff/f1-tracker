@@ -1,7 +1,7 @@
-import type { RadioClip, SessionInsights } from "@f1/core";
-import { shortName } from "@f1/core";
+import { type RadioClip, type RadioTranscripts, radioId, radioTranscriptFile, type SessionInsights, shortName } from "@f1/core";
 import { useEffect, useRef, useState } from "react";
 import { fmtDuration } from "./format";
+import { loadTranscripts } from "./transport";
 
 interface Props {
   clips: RadioClip[];
@@ -19,6 +19,19 @@ export function RadioPanel({ clips, drivers, startTs, onJump }: Props) {
   const [playing, setPlaying] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [all, setAll] = useState(false);
+  const [texts, setTexts] = useState<RadioTranscripts>({});
+
+  // Transcripciones automáticas: un archivo por sesión; si no existe, el panel sigue sin texto.
+  const files = [...new Set(clips.map((c) => radioTranscriptFile(c.url)).filter((f): f is string => !!f))].join(",");
+  useEffect(() => {
+    let live = true;
+    Promise.all(files.split(",").filter(Boolean).map(loadTranscripts)).then((all) => {
+      if (live) setTexts(Object.assign({}, ...all));
+    });
+    return () => {
+      live = false;
+    };
+  }, [files]);
 
   // Al salir de la pantalla, el audio se corta.
   useEffect(() => () => audio.current?.pause(), []);
@@ -77,11 +90,15 @@ export function RadioPanel({ clips, drivers, startTs, onJump }: Props) {
               <button type="button" className="linklike radio-at" onClick={() => onJump(c.ts)} title="Ir al momento de este mensaje">
                 {fmtDuration(startTs !== null ? c.ts - startTs : c.ts)}
               </button>
+              {texts[radioId(c.url) ?? ""]?.text && <p className="radio-text">“{texts[radioId(c.url) ?? ""].text}”</p>}
               {failed === c.url && <span className="radio-error">No se pudo cargar el audio.</span>}
             </li>
           );
         })}
       </ul>
+      {Object.keys(texts).length > 0 && (
+        <p className="muted small">Transcripción automática: puede tener errores, sobre todo con nombres y jerga.</p>
+      )}
       {list.length > SHOWN && (
         <button type="button" className="linklike" onClick={() => setAll((v) => !v)}>
           {all ? "Ver menos" : `Ver los ${list.length}`}

@@ -5,3 +5,4 @@ fixtures/*/
 .env
 .DS_Store
 site-data/
+.venv-whisper/

@@ -230,6 +230,13 @@ describe("API HTTP", () => {
     expect(res.json()).toEqual({ year: 2025, meetings: [], recordings: [] });
   });
 
+  it("/api/radio-text: rechaza nombres que no son un archivo de transcripciones y avisa si falta", async () => {
+    for (const bad of ["", "a.txt", "../package.json", "..%2Fpackage.json", "a/b.json"]) {
+      expect((await http(`/api/radio-text?file=${bad}`)).statusCode, bad).toBe(400);
+    }
+    expect((await http("/api/radio-text?file=no-existe.json")).statusCode).toBe(404);
+  });
+
   it("/api/telemetry: 400 sin source, 404 sin telemetría, 200 con los bytes", async () => {
     expect((await http("/api/telemetry")).statusCode).toBe(400);
     expect((await http("/api/telemetry?source=static:nada")).statusCode).toBe(404);

@@ -16,6 +16,8 @@
     "build:pages": "npm run build -w @f1/web -- --mode pages",
     "e2e:mobile": "tsx scripts/e2e-mobile.ts",
     "icons": "tsx scripts/icons.ts",
+    "transcribe": "tsx scripts/transcribe.ts",
+    "transcribe:setup": "bash scripts/setup-whisper.sh",
     "e2e:pwa": "tsx scripts/e2e-pwa.ts",
     "screenshots": "tsx scripts/screenshots.ts",
     "fixture:schema": "tsx scripts/fixture-schema.ts",

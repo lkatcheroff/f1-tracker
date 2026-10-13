@@ -1,7 +1,10 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import type { ClientCommand, ServerMessage, SessionsResponse } from "@f1/core";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { listMeetings } from "./archive";
+import { transcriptsDir } from "./config";
 import { loadSession, loadTelemetryFile } from "./loader";
 import { listRecordings } from "./recorder";
 import { type ClientSession, liveHub, ReplaySession } from "./sessions";
@@ -36,6 +39,17 @@ export async function buildApp(over: Partial<AppDeps> = {}) {
       return reply.header("content-type", "application/octet-stream").send(Buffer.from(bytes));
     } catch (err) {
       return reply.code(500).send({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get<{ Querystring: { file?: string } }>("/api/radio-text", async (req, reply) => {
+    // El nombre sale de la dirección del audio: solo letras, números, guiones bajos y puntos, nunca una ruta.
+    const file = req.query.file ?? "";
+    if (!/^[\w.-]+\.json$/.test(file) || file.includes("..")) return reply.code(400).send({ error: "nombre inválido" });
+    try {
+      return reply.header("content-type", "application/json").send(await readFile(path.join(transcriptsDir(), file), "utf8"));
+    } catch {
+      return reply.code(404).send({ error: "sin transcripciones" });
     }
   });
 

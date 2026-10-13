@@ -1658,3 +1658,11 @@ fieldset.bare {
     padding-block: 10px;
   }
 }
+
+.radio-text {
+  flex-basis: 100%;
+  margin: 0 0 6px 54px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}

@@ -23,6 +23,7 @@ Qué fuente se usa para qué, qué falta con cada una y dónde están sus térmi
 | Estado de pista (Safety Car, banderas) | Del feed | Deducido de los mensajes de Race Control: aproximado | Del feed |
 | Safety Car en el mapa | Sí | No | No |
 | Radio de los equipos (audio) | No (en esta versión) | Sí: enlace al mp3 de cada mensaje | No |
+| Transcripción de la radio | Ídem | Whisper en tu compu (`npm run transcribe`), publicada con el sitio | No |
 | Parrilla oficial | `GridPos` del feed | Sí, de la clasificación del mismo fin de semana | No |
 | Tiempo parado en boxes | No | Solo cuando OpenF1 lo informa (2025 sí; 2024 y 2026 vienen vacíos) | No |
 | Campeonato | No (en esta versión) | Sí, solo en carrera y sprint | No |
@@ -51,3 +52,7 @@ OpenF1 publica el color final de cada mini-sector (violeta, verde, amarillo) por
 - **Tiempo parado:** `pit.stop_duration` viene `null` en todas las paradas de 2024 y 2026 y completo en 2025. Se usa cuando existe; si no, la crónica solo cuenta el paso por la calle de boxes.
 - **Campeonato:** `championship_drivers` y `championship_teams` traen posición y puntos antes y después de la carrera. Se publican en el momento de la bandera a cuadros para no delatar el resultado.
 - **Clima:** el feed oficial y OpenF1 traen los mismos campos; se agregó la presión, que no se usaba.
+
+## Transcripción de la radio
+
+Los mp3 viven en `livetiming.formula1.com/static/.../TeamRadio/` (Amazon S3). Una corrida de prueba desde GitHub Actions recibió **403** al pedirlos (2026-10-13), igual que el resto del archivo de F1; desde una conexión hogareña responden bien. Por eso `scripts/transcribe.ts` corre en una compu y sube el texto al repositorio. Whisper (faster-whisper, modelo `small`, CPU) recibe como contexto los nombres de los pilotos de la sesión y la jerga de F1. Los tramos con voz dudosa se descartan. El texto sale en el idioma original, sin traducir.

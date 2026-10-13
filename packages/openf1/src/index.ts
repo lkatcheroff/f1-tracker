@@ -793,3 +793,17 @@ export async function listOpenF1Meetings(year: number): Promise<MeetingEntry[]> 
     }))
     .filter((m) => m.sessions.length);
 }
+
+/** Los mensajes de radio de una sesión y los nombres de sus pilotos (para orientar la transcripción). */
+export async function loadOpenF1Radio(
+  sessionKey: number,
+): Promise<{ clips: { date: string; driver: number; url: string }[]; drivers: string[] }> {
+  const [radio, drivers] = await Promise.all([get("team_radio", { session_key: sessionKey }), get("drivers", { session_key: sessionKey })]);
+  return {
+    clips: radio
+      .filter((r) => r.recording_url)
+      .map((r) => ({ date: r.date, driver: r.driver_number, url: r.recording_url }))
+      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date)),
+    drivers: drivers.map((r) => String(r.full_name ?? "")).filter(Boolean),
+  };
+}

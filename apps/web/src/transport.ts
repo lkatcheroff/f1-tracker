@@ -1,3 +1,4 @@
+import type { RadioTranscripts } from "@f1/core";
 import {
   type ClientCommand,
   type ServerMessage,
@@ -115,4 +116,19 @@ async function fetchTelemetry(source: string): Promise<SessionTelemetry | null> 
   if (!res.ok) throw new Error(`no se pudo bajar la telemetría (HTTP ${res.status})`);
   const bytes = new Uint8Array(await res.arrayBuffer());
   return bytes.length ? unpackTelemetry(bytes) : null; // vacío = la Action no pudo armarla para esta sesión
+}
+
+const transcriptCache = new Map<string, Promise<RadioTranscripts>>();
+
+/** Transcripciones de la radio de una sesión (un archivo por sesión). Sin archivo, vacío: no todas las sesiones lo tienen. */
+export function loadTranscripts(file: string): Promise<RadioTranscripts> {
+  let hit = transcriptCache.get(file);
+  if (!hit) {
+    const url = STATIC ? `${dataBase()}r/${file}` : `/api/radio-text?file=${encodeURIComponent(file)}`;
+    hit = fetch(url)
+      .then((res) => (res.ok ? (res.json() as Promise<RadioTranscripts>) : {}))
+      .catch(() => ({}));
+    transcriptCache.set(file, hit);
+  }
+  return hit;
 }

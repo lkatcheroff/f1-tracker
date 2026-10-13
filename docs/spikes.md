@@ -138,6 +138,10 @@ Formato real de `ExtrapolatedClock` en práctica y clasificación (archivo ofici
 
 Comprobado contra la API: `team_radio` devuelve audio (`audio/mpeg`, ~30 KB por mensaje, sin transcripción) en `livetiming.formula1.com/static/.../TeamRadio/`. `starting_grid` responde solo con la clave de la sesión de clasificación. `pit.stop_duration` es `null` en las 25 paradas de Singapur 2026 y en las 28 de Estados Unidos 2024, y está en las 18 de Estados Unidos 2025. `championship_drivers`/`championship_teams` responden con la clave de la carrera. `laps.i1_speed`, `i2_speed`, `st_speed` y `car_data.drs` existen y no se usan. **UNVERIFIED:** si el audio de F1 se puede reproducir desde cualquier red; desde la conexión usada en las pruebas sí.
 
+### Audios de radio desde GitHub Actions (2026-10-13)
+
+Un workflow de prueba pidió un mp3 de `TeamRadio` desde un runner de GitHub: **HTTP 403**, 919 bytes de HTML. Desde una conexión hogareña el mismo archivo responde 200 `audio/mpeg`. La transcripción corre entonces en local.
+
 ## 8. Presupuestos medidos y lo que sigue sin comprobar (2026-10-08)
 
 Medido en un laptop, con la carrera de Bakú (fixture, 22 pilotos):

@@ -12,3 +12,6 @@ export const config = {
 
 export const cacheDir = (...p: string[]) => path.join(config.dataDir, "cache", ...p);
 export const recordingsDir = () => path.join(config.dataDir, "recordings");
+
+/** Transcripciones de la radio (las genera `npm run transcribe`). */
+export const transcriptsDir = () => path.join(root, "transcripts");

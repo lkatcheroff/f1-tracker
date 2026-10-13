@@ -78,6 +78,9 @@ jobs:
         run: |
           npm run build:pages
           cp -r site-data apps/web/dist/data
+          # Transcripciones de la radio: las genera `npm run transcribe` en una compu con acceso a F1.
+          mkdir -p apps/web/dist/data/r
+          cp transcripts/*.json apps/web/dist/data/r/ 2>/dev/null || true
 
       - name: Subir el sitio
         if: steps.decide.outputs.deploy == 'true'
