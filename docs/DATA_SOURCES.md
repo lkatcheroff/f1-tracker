@@ -56,3 +56,5 @@ OpenF1 publica el color final de cada mini-sector (violeta, verde, amarillo) por
 ## Transcripción de la radio
 
 Los mp3 viven en `livetiming.formula1.com/static/.../TeamRadio/` (Amazon S3). Una corrida de prueba desde GitHub Actions recibió **403** al pedirlos (2026-10-13), igual que el resto del archivo de F1; desde una conexión hogareña responden bien. Por eso `scripts/transcribe.ts` corre en una compu y sube el texto al repositorio. Whisper (faster-whisper, modelo `small`, CPU) recibe como contexto los nombres de los pilotos de la sesión y la jerga de F1. Los tramos con voz dudosa se descartan. El texto sale en el idioma original, sin traducir.
+
+**Tampoco se puede transcribir en el navegador.** Los audios se sirven sin `Access-Control-Allow-Origin` (con `Vary: Origin`): un `fetch` desde la página falla y un `<audio crossorigin>` no carga (probado en Chrome, 2026-10-13). La página puede reproducir el audio, no leerlo, así que no hay forma de pasárselo a un modelo en el navegador. Quedan la tarea automática en una máquina de tu casa (`npm run transcribe:auto:install`) o transcribir a mano.

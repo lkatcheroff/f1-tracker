@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deja armada la transcripción automática de la radio en esta Mac (macOS, launchd).
-# Cada 2 horas, y al iniciar sesión, corre scripts/transcribe-auto.sh. Si la Mac estaba dormida, corre al despertar.
+# Cada 30 minutos, y al iniciar sesión, corre scripts/transcribe-auto.sh. Si la Mac estaba dormida, corre al despertar.
 # Para quitarla: npm run transcribe:auto:remove
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +28,7 @@ cat >"$PLIST" <<PLIST
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
   <array><string>/bin/bash</string><string>$HOME_DIR/transcribe-auto.sh</string></array>
-  <key>StartInterval</key><integer>7200</integer>
+  <key>StartInterval</key><integer>1800</integer>
   <key>RunAtLoad</key><true/>
   <key>ProcessType</key><string>Background</string>
   <key>LowPriorityIO</key><true/>

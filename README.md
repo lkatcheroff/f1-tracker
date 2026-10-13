@@ -128,6 +128,10 @@ npm run transcribe -- --session 11388 --model base   # una sesión puntual, con 
 git add transcripts && git commit -m "Transcripciones" && git push
 ```
 
+**Automático en tu Mac.** `npm run transcribe:auto:install` deja una tarea de macOS (launchd) que cada 30 minutos, y al despertar la Mac, transcribe las sesiones que falten y sube el texto a GitHub desde una copia propia del repositorio (`~/Library/Application Support/f1-tracker-auto`). El registro está en `~/Library/Logs/f1-tracker-transcribe.log` y se quita con `npm run transcribe:auto:remove`. Solo corre mientras la Mac esté prendida y con internet: una sesión nueva recibe su texto media hora después de reaparecer la conexión, más lo que tarde en republicarse el sitio.
+
+**Por qué no se transcribe en el navegador ni en GitHub.** Los audios los sirve F1 sin los encabezados que permiten leerlos desde otro sitio (CORS): la página puede reproducirlos, pero no leer sus bytes, y GitHub recibe 403. Las dos cosas se verificaron.
+
 El texto queda en `transcripts/` (un archivo por sesión, un mensaje por línea) y la Action lo publica con el sitio. Cada mensaje se transcribe una sola vez. Es una transcripción automática: se equivoca con nombres y jerga, y la pantalla lo avisa. Es gratis: corre en CPU, sin claves ni servicios. El modelo `small` baja unos 480 MB la primera vez.
 
 ## Sitio en GitHub Pages
