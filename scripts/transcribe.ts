@@ -4,7 +4,7 @@
 // Primera vez:  npm run transcribe:setup      (instala Whisper en .venv-whisper)
 // Después:      npm run transcribe            (las sesiones recientes que falten)
 //               npm run transcribe -- --session 11388 --model base
-// Opciones: --year 2026  --max-sessions 4  --model small  --session <clave de OpenF1>  --dry-run
+// Opciones: --year 2026  --max-sessions 4  --model small  --language en|auto  --session <clave de OpenF1>  --dry-run
 // Luego hay que subir los archivos nuevos de transcripts/ a GitHub (git add transcripts && git commit && git push).
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -23,6 +23,7 @@ const year = Number(arg("year", String(new Date().getUTCFullYear())));
 const maxSessions = Number(arg("max-sessions", "4"));
 const model = arg("model", "small") as string;
 const only = arg("session");
+const language = arg("language", "en") as string;
 const dry = process.argv.includes("--dry-run");
 
 const outDir = path.resolve("transcripts");
@@ -95,7 +96,9 @@ console.log(
 
 function run(items: { id: string; path: string }[], prompt: string): Promise<RadioTranscripts> {
   return new Promise((resolve, reject) => {
-    const child = spawn(python, ["scripts/transcribe.py", "--model", model, "--prompt", prompt], { stdio: ["pipe", "pipe", "inherit"] });
+    const child = spawn(python, ["scripts/transcribe.py", "--model", model, "--language", language, "--prompt", prompt], {
+      stdio: ["pipe", "pipe", "inherit"],
+    });
     let out = "";
     child.stdout.on("data", (b) => {
       out += b;

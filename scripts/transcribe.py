@@ -13,6 +13,7 @@ from faster_whisper import WhisperModel
 ap = argparse.ArgumentParser()
 ap.add_argument("--model", default="small")
 ap.add_argument("--prompt", default="")
+ap.add_argument("--language", default="en", help="idioma de la radio; 'auto' lo detecta (se equivoca con mensajes cortos y ruidosos)")
 args = ap.parse_args()
 
 items = json.load(sys.stdin)
@@ -21,6 +22,7 @@ out = {}
 for i, item in enumerate(items, 1):
     segments, info = model.transcribe(
         item["path"],
+        language=None if args.language == "auto" else args.language,
         initial_prompt=args.prompt or None,
         vad_filter=True,
         beam_size=5,

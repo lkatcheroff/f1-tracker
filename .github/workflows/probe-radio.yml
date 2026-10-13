@@ -1,0 +1,27 @@
+# Prueba manual: ¿pueden los servidores de GitHub bajar los audios de radio de F1, con otros encabezados?
+name: Probar audios de radio
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probar variantes
+        run: |
+          URL=$(curl -s "https://api.openf1.org/v1/team_radio?session_key=11388" | python3 -c "import sys,json;print(json.load(sys.stdin)[0]['recording_url'])")
+          echo "URL: $URL"
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+          try() { printf "%-34s" "$1"; shift; curl -s -o /tmp/a.mp3 -w "HTTP %{http_code} %{size_download}B\n" "$@" "$URL"; }
+          try "curl por defecto"
+          try "navegador (User-Agent)" -A "$UA"
+          try "navegador + Referer" -A "$UA" -e "https://www.formula1.com/"
+          try "navegador + Origin + Accept" -A "$UA" -H "Origin: https://www.formula1.com" -H "Accept: audio/mpeg,*/*"
+          try "solo IPv4" -4 -A "$UA"
+          try "solo IPv6" -6 -A "$UA"
+          try "Range (como un reproductor)" -A "$UA" -H "Range: bytes=0-"
+          echo "--- encabezados de la respuesta"
+          curl -sI -A "$UA" "$URL" | head -12
+          echo "--- IP de salida"
+          curl -s https://api.ipify.org; echo

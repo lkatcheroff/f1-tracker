@@ -5,5 +5,5 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 -m venv .venv-whisper
 .venv-whisper/bin/pip install --quiet --upgrade pip
-.venv-whisper/bin/pip install --quiet faster-whisper
+.venv-whisper/bin/pip install --quiet faster-whisper "av>=14,<17"
 echo "Listo: .venv-whisper con faster-whisper $(.venv-whisper/bin/pip show faster-whisper | sed -n 's/^Version: //p')"
