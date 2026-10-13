@@ -1,0 +1,19 @@
+# Prueba manual: ¿pueden los servidores de GitHub bajar los audios de radio de F1?
+# Se borra cuando la transcripción esté en marcha.
+name: Probar audios de radio
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bajar un audio de radio
+        run: |
+          set -e
+          URL=$(curl -s "https://api.openf1.org/v1/team_radio?session_key=11388" | python3 -c "import sys,json;print(json.load(sys.stdin)[0]['recording_url'])")
+          echo "URL: $URL"
+          curl -s -o radio.mp3 -w "HTTP %{http_code}, %{size_download} bytes, %{content_type}\n" "$URL"
+          ls -la radio.mp3
+          file radio.mp3 || true
