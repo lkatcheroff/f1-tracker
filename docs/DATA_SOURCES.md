@@ -22,9 +22,16 @@ Qué fuente se usa para qué, qué falta con cada una y dónde están sus térmi
 | Abandonos | Del feed | Deducidos del resultado final: aproximados | Del feed |
 | Estado de pista (Safety Car, banderas) | Del feed | Deducido de los mensajes de Race Control: aproximado | Del feed |
 | Safety Car en el mapa | Sí | No | No |
+| Tiempo restante de la sesión | Reloj de la transmisión | Reconstruido con la duración de cada parte y las banderas rojas | Del feed |
 
 Cada sesión lleva su `dataQuality` y la pantalla muestra un aviso cuando la fuente no es el archivo oficial. Los eventos que dependen de una aproximación llevan un ≈ delante.
 
 ## Verificado y no verificado
 
 Los hallazgos medidos (formatos de mensajes, coincidencia entre OpenF1 y el feed oficial, instante de salida de boxes) están en [`spikes.md`](./spikes.md). Lo que figura allí como `UNVERIFIED` sigue sin comprobarse.
+
+## Reloj de sesión con OpenF1
+
+OpenF1 no publica el cronómetro de práctica y clasificación. El adaptador lo reconstruye: arranca cuando se abre la calle de boxes, se detiene con la bandera roja, vuelve a su duración al empezar cada parte y llega a cero con la bandera a cuadros. La duración de cada parte sale del reglamento (práctica 60 min; clasificación 18, 15 y 12; clasificación sprint 12, 10 y 8). Si una parte corrió sin banderas rojas, manda lo observado, porque la duración real puede cambiar de una sesión a otra.
+
+Comparado con el reloj oficial en la clasificación de Bakú 2026 (instantes de control en Q1, Q2 y Q3): diferencia de 0 segundos en los seis. Es una sola sesión: con bandera roja el reloj reconstruido puede desviarse unos segundos, y por eso el aviso de calidad de la sesión lo declara.

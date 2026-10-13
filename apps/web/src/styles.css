@@ -1372,3 +1372,142 @@ fieldset.bare {
     align-items: center;
   }
 }
+
+/* --- tiempo restante de la sesión e "Ir a" --- */
+.remaining {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 12px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.15;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.remaining:hover {
+  border-color: var(--ink-3);
+}
+.remaining[aria-expanded="true"] {
+  border-color: var(--accent);
+}
+.remaining-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.remaining-time {
+  font-size: 22px;
+  font-weight: 700;
+}
+.remaining-stopped .remaining-time {
+  color: var(--yellow, #f5c542);
+}
+.goto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.goto-input {
+  width: 6em;
+}
+.goto-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--red);
+  font-size: 13px;
+}
+.drag-label {
+  font-variant-numeric: tabular-nums;
+}
+
+/* La barra de avance: un pulgar grande y fácil de agarrar. */
+.scrub {
+  touch-action: pan-y;
+  height: 28px;
+  cursor: pointer;
+}
+.scrub::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+}
+.scrub::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+}
+@media (max-width: 720px), (pointer: coarse) {
+  .scrub {
+    height: 40px;
+  }
+  .scrub::-webkit-slider-thumb {
+    width: 32px;
+    height: 32px;
+  }
+  .scrub::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+  }
+}
+@media (max-width: 720px) {
+  /* Fila 1: reproducir y sync. Fila 2: tiempo restante y "Ajustes". Fila 3: reloj de la grabación y la barra. */
+  .controls .btn-icon,
+  .controls .btn-primary {
+    flex: 1 1 40%;
+  }
+  .controls .remaining {
+    order: 3;
+    flex: 1 1 auto;
+    align-items: center;
+  }
+  .controls .btn-adjust {
+    order: 3;
+    align-self: stretch;
+  }
+  .controls .clock {
+    order: 4;
+    width: 100%;
+  }
+  .controls .goto {
+    order: 7;
+    width: 100%;
+  }
+  .goto-short {
+    flex-wrap: wrap;
+  }
+}
+
+/* App instalada (pantalla completa): se respetan la muesca y la barra de gestos. */
+@supports (padding: env(safe-area-inset-top)) {
+  .bar,
+  .home {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .bar,
+  .controls,
+  .grid,
+  .tab-body,
+  .tel-wrap,
+  .tabs,
+  .foot {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .foot {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+@media (display-mode: standalone) {
+  /* Sin barra del navegador no hay botón "atrás" a la vista: el enlace a las sesiones es el camino de vuelta. */
+  .back {
+    padding: 10px 4px;
+  }
+}

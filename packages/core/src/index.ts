@@ -1,3 +1,4 @@
+export * from "./clock";
 export * from "./compare";
 export * from "./engine";
 export * from "./insights";

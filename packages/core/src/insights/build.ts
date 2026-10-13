@@ -77,6 +77,7 @@ const QUALITY: Record<DataSourceKind, string[]> = {
     "Abandonos deducidos del resultado final de OpenF1",
     "Estado de pista (Safety Car, banderas) deducido de los mensajes de Race Control",
     "Mini-sectores repartidos en partes iguales a lo largo de cada sector",
+    "Tiempo restante de la sesión calculado con la duración reglamentaria y las banderas rojas, no con el reloj oficial",
     "Sin Safety Car en el mapa",
   ],
   recording: ["Sin posiciones ni telemetría: el feed en vivo sin cuenta de F1 no las trae"],

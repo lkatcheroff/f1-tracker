@@ -1,4 +1,4 @@
-import { findOutline, prepareMessages, type RawMessage } from "@f1/core";
+import { buildClock, clockParts, findOutline, partLength, prepareMessages, type RawMessage, remainingAt, tsAtRemaining } from "@f1/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { adaptOpenF1, configureOpenF1, listOpenF1Meetings, loadOpenF1Session } from "../src";
 
@@ -283,5 +283,97 @@ describe("vuelta de formación (regresión)", () => {
     // Una vuelta de verdad mide ~2π·2500 ≈ 15.700; dos vueltas medirían el doble.
     expect(length).toBeGreaterThan(15_000);
     expect(length).toBeLessThan(16_500);
+  });
+});
+
+describe("reloj de la sesión", () => {
+  const rc = (ms: number, flag: string, message: string, scope = "Track") => ({ date: iso(ms), category: "Flag", flag, scope, message });
+  const green = (ms: number) => rc(ms, "GREEN", "GREEN LIGHT - PIT EXIT OPEN");
+  const run = (name: string, type: string, raceControl: Row[]) =>
+    buildClock(
+      prepareMessages(
+        adaptOpenF1({
+          session: { ...session, session_name: name, session_type: type },
+          meeting: undefined,
+          drivers: [driver],
+          laps: [{ driver_number: 1, lap_number: 1, date_start: iso(0), lap_duration: 60 }],
+          intervals: [],
+          position: [],
+          stints: [],
+          pit: [],
+          raceControl,
+          weather: [],
+          results: [],
+          location: [],
+          car: [],
+        }),
+      ),
+    );
+  const MIN = 60_000;
+
+  it("práctica: 60 minutos desde que abre la calle de boxes, y se detiene con la bandera roja", () => {
+    const clock = run("Practice 1", "Practice", [
+      green(2 * MIN),
+      rc(22 * MIN, "RED", "RED FLAG"),
+      green(30 * MIN),
+      rc(80 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+    ]);
+    expect(remainingAt(clock, 0)).toMatchObject({ remainingMs: 60 * MIN, running: false });
+    expect(remainingAt(clock, 12 * MIN)).toMatchObject({ remainingMs: 50 * MIN, running: true });
+    // Bandera roja a los 20 minutos de reloj corrido: se detiene en 40:00 y no baja durante la espera
+    expect(remainingAt(clock, 25 * MIN)).toMatchObject({ remainingMs: 40 * MIN, running: false });
+    expect(remainingAt(clock, 30 * MIN + 10_000)?.remainingMs).toBe(40 * MIN - 10_000);
+    // La bandera a cuadros cierra el reloj en cero
+    expect(remainingAt(clock, 81 * MIN)).toMatchObject({ remainingMs: 0, running: false });
+    expect(clockParts(clock)).toEqual([]);
+  });
+
+  it("clasificación: cada parte vuelve a su duración (18, 15, 12) y queda en su propia parte", () => {
+    const clock = run("Qualifying", "Qualifying", [
+      green(1 * MIN),
+      rc(19 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+      green(25 * MIN),
+      rc(40 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+      green(46 * MIN),
+    ]);
+    expect(clockParts(clock)).toEqual([1, 2, 3]);
+    expect(partLength(clock, 1)).toBe(18 * MIN);
+    expect(partLength(clock, 2)).toBe(15 * MIN);
+    expect(partLength(clock, 3)).toBe(12 * MIN);
+    // Faltando 3:15 de la Q2: el reloj de la Q2 empezó en el minuto 25
+    const ts = tsAtRemaining(clock, 2, 3 * MIN + 15_000, 200 * MIN);
+    expect(ts).toBe(25 * MIN + (15 * MIN - (3 * MIN + 15_000)));
+    expect(remainingAt(clock, ts as number)).toMatchObject({ remainingMs: 3 * MIN + 15_000, part: 2, running: true });
+  });
+
+  it("si una parte corrió sin banderas rojas, manda lo observado (Q3 de 13 minutos)", () => {
+    const clock = run("Qualifying", "Qualifying", [
+      green(MIN),
+      rc(19 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+      green(25 * MIN),
+      rc(40 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+      green(46 * MIN),
+      rc(59 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+    ]);
+    expect([partLength(clock, 1), partLength(clock, 2), partLength(clock, 3)]).toEqual([18 * MIN, 15 * MIN, 13 * MIN]);
+  });
+
+  it("con bandera roja en la parte, no se adivina: queda la duración reglamentaria", () => {
+    const clock = run("Qualifying", "Qualifying", [
+      green(MIN),
+      rc(5 * MIN, "RED", "RED FLAG"),
+      green(12 * MIN),
+      rc(30 * MIN, "CHEQUERED", "CHEQUERED FLAG"),
+    ]);
+    expect(partLength(clock, 1)).toBe(18 * MIN);
+  });
+
+  it("clasificación sprint: 12, 10 y 8 minutos", () => {
+    const clock = run("Sprint Qualifying", "Qualifying", [green(MIN), rc(13 * MIN, "CHEQUERED", "CHEQUERED FLAG"), green(20 * MIN)]);
+    expect([partLength(clock, 1), partLength(clock, 2)]).toEqual([12 * MIN, 10 * MIN]);
+  });
+
+  it("la carrera no tiene reloj de sesión", () => {
+    expect(run("Race", "Race", [green(MIN)])).toEqual([]);
   });
 });

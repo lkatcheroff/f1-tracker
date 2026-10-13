@@ -123,6 +123,20 @@ const fmtLap = (sec: number) => {
   return m ? `${m}:${s}` : (sec - m * 60).toFixed(3);
 };
 
+/** Minutos de cada parte según el nombre de la sesión (práctica: una sola; clasificación: Q1, Q2, Q3). null si no tiene reloj. */
+function nominalMinutes(name: string | undefined): number[] | null {
+  if (/sprint\s*(qualifying|shootout)/i.test(name ?? "")) return [12, 10, 8];
+  if (/qualifying/i.test(name ?? "")) return [18, 15, 12];
+  if (/practice/i.test(name ?? "")) return [60];
+  return null;
+}
+
+const fmtClock = (ms: number) => {
+  const s = Math.round(ms / 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+};
+
 const fmtGap = (v: unknown): string => {
   if (typeof v === "number") return v > 0 ? `+${v.toFixed(3)}` : "";
   const m = /(\d+)\s*L/i.exec(String(v ?? ""));
@@ -430,6 +444,8 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   // Race Control tal cual; el estado de pista y de sesión se deduce de sus mensajes (aproximado).
   let sc = false;
   let aborted = false;
+  /** Cambios de estado de la sesión, para reconstruir el reloj de práctica y clasificación. */
+  const runEvents: { ts: number; kind: "start" | "stop" | "end" }[] = [];
   // En orden cronológico: los deltas van por índice y uno fuera de orden dejaría huecos en la lista.
   rcSorted.forEach((r, i) => {
     const ts = at(r.date);
@@ -460,14 +476,17 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       aborted = true;
       track("5", "Red");
       push("SessionStatus", ts, { Status: "Aborted" });
+      runEvents.push({ ts, kind: "stop" });
     } else if (r.flag === "CHEQUERED") {
       push("SessionStatus", ts, { Status: "Finished" });
+      runEvents.push({ ts, kind: "end" });
     } else if (r.flag === "GREEN" || (r.flag === "CLEAR" && r.scope === "Track")) {
       sc = false;
       track("1", "AllClear");
       if (text.includes("PIT EXIT OPEN") && (!isRace || aborted)) {
         aborted = false;
         push("SessionStatus", ts, { Status: "Started" });
+        runEvents.push({ ts, kind: "start" });
       }
     } else if (!sc && (r.flag === "YELLOW" || r.flag === "DOUBLE YELLOW")) {
       track("2", "Yellow");
@@ -475,6 +494,67 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       track("1", "AllClear");
     }
   });
+
+  // Reloj de la sesión. OpenF1 no lo trae: se arma con la duración reglamentaria de cada parte y se detiene
+  // con la bandera roja. Es una aproximación (el reloj oficial puede diferir unos segundos).
+  let nominal = nominalMinutes(d.session.session_name);
+  if (!isRace && nominal) {
+    const starts = [...partStarts.slice(1)].map((ts, i) => ({ ts, part: i + 1 }));
+    // La duración reglamentaria es el punto de partida. Si una parte corrió de largo (sin bandera roja), el reloj llegó a cero justo
+    // en la bandera a cuadros: lo observado, redondeado al minuto, corrige duraciones que cambian de una sesión a otra.
+    const windows = [0, ...starts.map((p) => p.ts)].map((from, k, all) => ({ from, to: all[k + 1] ?? Number.POSITIVE_INFINITY }));
+    nominal = nominal.map((minutes, k) => {
+      const w = windows[k];
+      if (!w) return minutes;
+      const inside = runEvents.filter((e) => e.ts >= w.from && e.ts < w.to);
+      const [first, ...rest] = inside;
+      if (first?.kind !== "start" || rest.length !== 1 || rest[0].kind !== "end") return minutes;
+      const observed = Math.round((rest[0].ts - first.ts) / 60_000);
+      return observed >= minutes && observed <= minutes + 2 ? observed : minutes;
+    });
+    const timeline = [
+      ...starts.map((p) => ({ ts: p.ts, order: 0, kind: "part" as const, part: p.part })),
+      ...runEvents.map((e) => ({ ts: e.ts, order: 1, kind: e.kind, part: 0 })),
+    ].sort((a, b) => a.ts - b.ts || a.order - b.order);
+    let part = 0;
+    let remaining = nominal[0] * 60_000;
+    let since: number | null = null;
+    const anchor = (ts: number, running: boolean) =>
+      push("ExtrapolatedClock", ts, { Utc: new Date(t0 + ts).toISOString(), Remaining: fmtClock(remaining), Extrapolating: running });
+    const halt = (ts: number) => {
+      if (since !== null) remaining = Math.max(0, remaining - (ts - since));
+      since = null;
+    };
+    anchor(0, false);
+    for (const e of timeline) {
+      if (e.kind === "part") {
+        // Arranca otra parte: la anterior se da por cerrada y el reloj vuelve a su duración, detenido.
+        if (e.part >= nominal.length) continue;
+        if (since !== null) {
+          remaining = 0;
+          since = null;
+          anchor(e.ts, false);
+        }
+        part = e.part;
+        remaining = nominal[part] * 60_000;
+        anchor(e.ts, false);
+      } else if (e.kind === "start") {
+        if (since === null && remaining > 0) {
+          since = e.ts;
+          anchor(e.ts, true);
+        }
+      } else if (e.kind === "stop") {
+        if (since !== null) {
+          halt(e.ts);
+          anchor(e.ts, false);
+        }
+      } else if (since !== null) {
+        remaining = 0;
+        since = null;
+        anchor(e.ts, false);
+      }
+    }
+  }
 
   for (const r of d.weather) {
     push("WeatherData", at(r.date), {

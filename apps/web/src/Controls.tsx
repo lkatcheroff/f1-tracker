@@ -1,8 +1,17 @@
-import type { ClientCommand, InsightEvent, NeutralSpan, PlaybackState, SessionIndex, Snapshot } from "@f1/core";
-import { useEffect, useState } from "react";
+import {
+  type ClientCommand,
+  type InsightEvent,
+  type NeutralSpan,
+  type PlaybackState,
+  remainingAt,
+  type SessionIndex,
+  type Snapshot,
+} from "@f1/core";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EventTrack } from "./EventTrack";
 import { makeXOf } from "./events";
 import { fmtDuration, store } from "./format";
+import { GoTo } from "./GoTo";
 
 const SPEEDS = [0.5, 1, 2, 4, 8, 16];
 
@@ -31,6 +40,7 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
   const [drag, setDrag] = useState<number | null>(null);
   /** En teléfono, los controles secundarios van plegados en "Ajustes". En pantallas grandes siempre se ven. */
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [goOpen, setGoOpen] = useState(false);
   useEffect(() => store.set(offsetKey, offset), [offsetKey, offset]);
 
   const { time, paused, speed } = playback;
@@ -65,11 +75,54 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
   const byLap = hasLaps && spoilerFree;
   const sliderMax = byLap ? index.totalLaps! : index.duration;
   const sliderNow = byLap ? (snap.lap?.current ?? 1) : time;
+  // Mientras se arrastra, la reproducción sigue al dedo (cada 120 ms como mucho): se ve dónde se va a caer.
+  const sent = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef<number | null>(null);
+  // La función de salto cambia en cada render (depende del índice y del modo): se lee siempre la última.
+  const applyRef = useRef((_v: number) => {});
+  applyRef.current = (v) => (byLap ? goLap(v) : seek(v));
+  const flush = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    if (latest.current === null) return;
+    sent.current = performance.now();
+    applyRef.current(latest.current);
+  }, []);
+  const live = (v: number) => {
+    setDrag(v);
+    latest.current = v;
+    const wait = 120 - (performance.now() - sent.current);
+    if (wait <= 0) flush();
+    else if (!timer.current) timer.current = setTimeout(flush, wait);
+  };
   const commit = () => {
-    if (drag === null) return;
-    if (byLap) goLap(drag);
-    else seek(drag);
+    if (drag === null && latest.current === null) return;
+    flush();
+    latest.current = null;
     setDrag(null);
+  };
+  // En el teléfono el gesto puede terminar fuera de la barra o cancelarse: se cierra el arrastre donde sea que suelte el dedo.
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => {
+    const end = () => commitRef.current();
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    window.addEventListener("touchend", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("touchend", end);
+    };
+  }, []);
+
+  // Reloj de la sesión: cuánto falta (práctica y clasificación). La carrera se mide en vueltas.
+  const clock = index.clock ?? [];
+  const reading = !snap.lap && clock.length ? remainingAt(clock, time) : null;
+  const clockLabel = (ts: number) => {
+    const r = clock.length && !snap.lap ? remainingAt(clock, ts) : null;
+    return r ? `${r.part ? `Q${r.part} · ` : ""}faltan ${fmtDuration(r.remainingMs)}` : fmtDuration(ts);
   };
 
   return (
@@ -111,6 +164,21 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
             </label>
           )}
         </span>
+        {reading && (
+          <button
+            type="button"
+            className={`remaining ${reading.running ? "" : "remaining-stopped"}`}
+            aria-expanded={goOpen}
+            onClick={() => setGoOpen((v) => !v)}
+            title="Tiempo que queda de la sesión. Tocá para ir a un momento por el tiempo restante"
+          >
+            <span className="remaining-label">
+              {reading.part ? `Q${reading.part}` : "Sesión"}
+              {reading.running ? " · quedan" : reading.remainingMs === 0 ? " · terminó" : " · reloj detenido"}
+            </span>
+            <span className="remaining-time">{fmtDuration(reading.remainingMs)}</span>
+          </button>
+        )}
         <span className="clock">
           {sinceStart === null
             ? fmtDuration(time)
@@ -172,16 +240,26 @@ export function Controls({ source, playback, index, snap, send, spoilerFree, onS
             max={sliderMax}
             step={byLap ? 1 : 1000}
             value={drag ?? sliderNow}
-            onChange={(e) => setDrag(Number(e.target.value))}
-            onPointerUp={commit}
+            onChange={(e) => live(Number(e.target.value))}
             onKeyUp={commit}
             onBlur={commit}
             aria-label={byLap ? "Vuelta" : "Posición en la sesión"}
           />
           {marks && <EventTrack xOf={makeXOf(index, byLap)} {...marks} />}
         </div>
-        {drag !== null && <span className="muted small">{byLap ? `vuelta ${drag}` : fmtDuration(drag)}</span>}
+        {drag !== null && <span className="muted small drag-label">{byLap ? `vuelta ${drag}` : clockLabel(drag)}</span>}
       </div>
+      {goOpen && clock.length > 0 && (
+        <GoTo
+          clock={clock}
+          duration={index.duration}
+          currentPart={reading?.part ?? null}
+          onGo={(ts) => {
+            seek(ts);
+            setGoOpen(false);
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -130,6 +130,10 @@ Verificados contra la carrera de Bakú (fixture) y los mensajes de Race Control 
 - **Sanciones y comisarios (`RaceControlMessages`):** el piloto va solo en el texto; 0 de 61 sanciones de tiempo traen `RacingNumber`. Formatos vistos: `N SECOND TIME PENALTY FOR CAR n (TLA)`, `DRIVE THROUGH PENALTY FOR CAR…`, `STOP-AND-GO PENALTY FOR CAR…`, `PENALTY SERVED - …`, `WARNING FOR CAR…`, `INCIDENT INVOLVING CAR(S) … NOTED | UNDER INVESTIGATION | WILL BE INVESTIGATED AFTER THE RACE/SPRINT | REVIEWED NO FURTHER INVESTIGATION | NO FURTHER ACTION`. Variantes: prefijo `FIA STEWARDS:` (a veces `UPDATE:`), prefijo `TURN n` o `LAP n TURN n`, varios autos (`CARS 5 (BOR), 77 (BOT) AND 10 (GAS)`), motivo (` - …`) y hora `(HH:MM:SS)` opcionales. No aparecen descalificaciones ni reprimendas en 2026.
 - **UNVERIFIED:** formato de las sanciones en sprint o clasificación más allá de lo listado; qué mensaje cierra una investigación que termina en sanción posterior (se encadena solo por piloto y motivo, no por un identificador).
 
+## 9. Reloj de sesión (2026-10-13)
+
+Formato real de `ExtrapolatedClock` en práctica y clasificación (archivo oficial): una ancla por tramo, `{Utc, Remaining, Extrapolating}`. El reinicio de cada parte llega detenido y sin `Extrapolating` (queda como estaba); el reloj arranca corriendo con `Remaining` un segundo menor; la bandera roja lo detiene con `Extrapolating: false`; al final de la parte queda en `00:00:00`. `SessionPart` llega en `TimingData` unos segundos **después** del reinicio del reloj, por eso la parte de un reinicio se asigna con la que rige al final del tramo. En Bakú 2026 las partes duraron 18:00, 15:00 y **13:00** (no 12): por eso el adaptador de OpenF1 prefiere la duración observada. Resultado: el reloj reconstruido desde OpenF1 coincide con el oficial en los seis instantes comparados.
+
 ## 8. Presupuestos medidos y lo que sigue sin comprobar (2026-10-08)
 
 Medido en un laptop, con la carrera de Bakú (fixture, 22 pilotos):

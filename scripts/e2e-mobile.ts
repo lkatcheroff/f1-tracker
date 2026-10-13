@@ -1,7 +1,7 @@
 // Aceptación del móvil (SPEC-v2 §5): 390×844, sin desborde horizontal, sincronizar la largada,
 // cambiar de pestaña y tocar un evento. Necesita el sitio andando (por defecto, `npm run dev`) y Chrome.
 // Uso: npm run e2e:mobile   (E2E_URL, E2E_SESSION y E2E_AT cambian a dónde apunta)
-import { launch, MOBILE, openSession } from "./browser";
+import { launch, MOBILE, openSession, sessionUrl } from "./browser";
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: MOBILE, hasTouch: true, isMobile: true });
@@ -65,6 +65,44 @@ try {
     );
     check(small.length === 0, `objetivos táctiles ≥ 44 px en ${name}${small.length ? `: ${small.slice(0, 5).join(", ")}` : ""}`);
   }
+  // Clasificación: tiempo restante a la vista, "Ir a" por el tiempo de sesión y barra que sigue al dedo.
+  const quali = process.env.E2E_QUALI ?? "static:2026/2026-09-26_Azerbaijan_Grand_Prix/2026-09-25_Qualifying/";
+  await page.goto(
+    sessionUrl(3300).replace(
+      encodeURIComponent(process.env.E2E_SESSION ?? "static:2026/2026-09-26_Azerbaijan_Grand_Prix/2026-09-26_Race/"),
+      encodeURIComponent(quali),
+    ),
+  );
+  // La pestaña elegida se recuerda: se vuelve a la torre antes de esperar a que cargue.
+  await page.getByRole("tab", { name: "Torre" }).click();
+  await page.waitForSelector(".tower tbody tr", { timeout: 60_000 });
+  const remaining = page.locator(".remaining");
+  check(await remaining.isVisible(), "la clasificación muestra el tiempo restante");
+  check(((await remaining.boundingBox())?.height ?? 0) >= 43, "el tiempo restante se puede tocar (≥ 44 px)");
+  const readout = async () => (await page.locator(".remaining-time").innerText()).trim();
+  await remaining.tap();
+  await page.locator(".goto-input").fill("3:15");
+  await page.getByRole("button", { name: "Ir", exact: true }).tap();
+  await page.waitForTimeout(1200);
+  check((await readout()) === "03:15", `"Ir a" faltando 3:15 deja el reloj en 03:15 (muestra ${await readout()})`);
+  check((await page.locator(".remaining-label").innerText()).includes("Q2"), "...y en la parte correcta (Q2)");
+  await remaining.tap();
+  await page.locator(".goto-input").fill("99:00");
+  await page.getByRole("button", { name: "Ir", exact: true }).tap();
+  check(await page.getByRole("alert").isVisible(), "un tiempo que no existe avisa en vez de saltar");
+  await remaining.tap();
+
+  // La barra sigue al dedo: sin soltar, la reproducción ya se mueve.
+  const before = await readout();
+  await page.locator(".scrub").evaluate((el: HTMLInputElement) => {
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    set?.call(el, String(Math.round(Number(el.max) * 0.3)));
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(500);
+  check((await readout()) !== before, "arrastrar la barra mueve la reproducción antes de soltar");
+  check((await page.locator(".drag-label").innerText()).includes("faltan"), "mientras se arrastra, se ve cuánto faltaría en ese punto");
+
   check(errors.length === 0, `sin errores de JavaScript${errors.length ? `: ${errors[0]}` : ""}`);
 } finally {
   await browser.close();

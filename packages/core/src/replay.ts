@@ -1,3 +1,4 @@
+import { buildClock } from "./clock";
 import { StateEngine } from "./engine";
 import type { RawMessage, SessionIndex, TrackOutline } from "./types";
 
@@ -37,6 +38,7 @@ export function buildIndex(messages: RawMessage[]): SessionIndex {
     totalLaps: null,
     laps: [],
     events: [],
+    clock: buildClock(messages),
   };
   let status = "";
   for (const m of messages) {

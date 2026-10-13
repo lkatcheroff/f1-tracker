@@ -231,7 +231,7 @@ export function SessionView({ target }: { target: Target }) {
             {snap.part ? (
               <span className="fact">
                 <strong>Q{snap.part}</strong>
-                {snap.status === "Started" && snap.remainingMs !== null
+                {target.mode === "live" && snap.status === "Started" && snap.remainingMs !== null
                   ? ` · quedan ${fmtDuration(snap.remainingMs)}`
                   : ` · ${SESSION_STATUS[snap.status] ?? snap.status}`}
               </span>
@@ -244,7 +244,9 @@ export function SessionView({ target }: { target: Target }) {
                 {track.label}
               </span>
             )}
-            {snap.remainingMs !== null && !snap.lap && !snap.part && <span className="fact">Restan {fmtDuration(snap.remainingMs)}</span>}
+            {target.mode === "live" && snap.remainingMs !== null && !snap.lap && !snap.part && (
+              <span className="fact">Restan {fmtDuration(snap.remainingMs)}</span>
+            )}
             {w && (
               <span className="fact muted">
                 Aire {w.air ?? "–"}° · Pista {w.track ?? "–"}°{w.rain ? " · Lluvia" : ""}

@@ -1,3 +1,4 @@
+import type { ClockAnchor } from "./clock";
 /** Mensaje crudo del feed de F1, igual en replay y en live. */
 export type RawMessage = {
   topic: string;
@@ -174,4 +175,9 @@ export interface SessionIndex {
   laps: { lap: number; ts: number }[];
   /** Cambios de estado de pista y de sesión, para marcar la línea de tiempo. */
   events: { ts: number; kind: "track" | "session"; value: string }[];
+  /**
+   * Reloj de la sesión (tiempo restante en práctica y clasificación). Vacío si la fuente no lo trae.
+   * Falta en los paquetes viejos: quien los abre lo reconstruye con `buildClock`.
+   */
+  clock?: ClockAnchor[];
 }

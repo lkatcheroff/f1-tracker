@@ -1,4 +1,5 @@
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from "fflate";
+import { buildClock } from "./clock";
 import type { LoadedSession } from "./player";
 import type { RawMessage } from "./types";
 
@@ -20,7 +21,7 @@ export const REPLAY_TOPICS = [
 ];
 
 /** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
-export const PACK_VERSION = 4;
+export const PACK_VERSION = 5;
 const VERSION = PACK_VERSION;
 /** Las versiones anteriores a esta no se pueden leer. */
 const MIN_VERSION = 2;
@@ -58,5 +59,7 @@ export function unpackSession(bytes: Uint8Array, source: string): LoadedSession 
   if (typeof d.v !== "number" || d.v < MIN_VERSION || d.v > VERSION) throw new Error(`formato de sesión desconocido (v${d.v})`);
   const messages: RawMessage[] = d.messages.map(([t, ts, data]: [number, number, unknown]) => ({ topic: d.topics[t], ts, data }));
   // Las sesiones publicadas antes de que se guardara el origen salieron todas de OpenF1.
-  return { source, messages, index: d.index, outline: d.outline, origin: d.origin ?? "openf1" };
+  // Los paquetes anteriores a la v5 no guardaban el reloj de la sesión: se reconstruye de los mensajes.
+  const index = { ...d.index, clock: d.index.clock ?? buildClock(messages) };
+  return { source, messages, index, outline: d.outline, origin: d.origin ?? "openf1" };
 }
