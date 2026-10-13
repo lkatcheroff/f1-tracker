@@ -162,6 +162,13 @@ interface OpenF1Data {
   results: Row[];
   /** Posiciones aplanadas de a cuatro: nº de auto, epoch ms, x, y. */
   location: number[];
+  /** Mensajes de radio del equipo (audio). */
+  radio?: Row[];
+  /** Parrilla de salida (viene de la sesión de clasificación). */
+  grid?: Row[];
+  /** Campeonato de pilotos y de equipos al terminar la carrera. */
+  champDrivers?: Row[];
+  champTeams?: Row[];
   /** Telemetría aplanada de a siete: nº de auto, epoch ms, velocidad, rpm, marcha, acelerador, freno. Vacía si no se pidió. */
   car: number[];
 }
@@ -236,7 +243,12 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     ),
   });
   push("TimingAppData", 0, {
-    Lines: Object.fromEntries(d.drivers.map((r) => [r.driver_number, { RacingNumber: String(r.driver_number), Stints: [] }])),
+    Lines: Object.fromEntries(
+      d.drivers.map((r) => {
+        const g = (d.grid ?? []).find((x) => x.driver_number === r.driver_number)?.position;
+        return [r.driver_number, { RacingNumber: String(r.driver_number), Stints: [], ...(g ? { GridPos: String(g) } : {}) }];
+      }),
+    ),
   });
   push("SessionStatus", 0, { Status: "Inactive" });
   push("TrackStatus", 0, { Status: "1", Message: "AllClear" });
@@ -434,7 +446,8 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
     // `date` es la salida de boxes (verificado contra el feed: coincide con `InPit: false`); la entrada es `date` menos el tiempo en la calle.
     const out = at(r.date);
     line(Math.max(0, out - (r.lane_duration ?? r.pit_duration ?? 22) * 1000), r.driver_number, { InPit: true, NumberOfPitStops: n });
-    line(out, r.driver_number, { InPit: false });
+    // `stop_duration` es el tiempo con el auto detenido; OpenF1 lo informa solo en algunas temporadas.
+    line(out, r.driver_number, typeof r.stop_duration === "number" ? { InPit: false, StopDuration: r.stop_duration } : { InPit: false });
   }
 
   if (isRace) {
@@ -454,6 +467,7 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
   // Race Control tal cual; el estado de pista y de sesión se deduce de sus mensajes (aproximado).
   let sc = false;
   let aborted = false;
+  let finishTs = 0;
   /** Cambios de estado de la sesión, para reconstruir el reloj de práctica y clasificación. */
   const runEvents: { ts: number; kind: "start" | "stop" | "end" }[] = [];
   // En orden cronológico: los deltas van por índice y uno fuera de orden dejaría huecos en la lista.
@@ -489,6 +503,7 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       runEvents.push({ ts, kind: "stop" });
     } else if (r.flag === "CHEQUERED") {
       push("SessionStatus", ts, { Status: "Finished" });
+      finishTs = Math.max(finishTs, ts);
       runEvents.push({ ts, kind: "end" });
     } else if (r.flag === "GREEN" || (r.flag === "CLEAR" && r.scope === "Track")) {
       sc = false;
@@ -571,9 +586,24 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       AirTemp: String(r.air_temperature),
       TrackTemp: String(r.track_temperature),
       Humidity: String(r.humidity),
+      Pressure: String(r.pressure),
       Rainfall: String(r.rainfall),
       WindSpeed: String(r.wind_speed),
       WindDirection: String(r.wind_direction),
+    });
+  }
+
+  // Radio de los equipos: audio en el archivo de F1, cada mensaje con su hora y su piloto.
+  for (const r of d.radio ?? []) {
+    if (r.recording_url)
+      push("TeamRadio", at(r.date), { Capture: { Utc: r.date, RacingNumber: String(r.driver_number), Url: r.recording_url } });
+  }
+  // Campeonato: se conoce al terminar la carrera; antes de eso publicarlo delataría el resultado.
+  if (d.champDrivers?.length) {
+    const row = (r: Row) => ({ posStart: r.position_start, pos: r.position_current, ptsStart: r.points_start, pts: r.points_current });
+    push("Championship", finishTs || Math.max(0, ...d.laps.map((l) => (l.date_start ? at(l.date_start) : 0))), {
+      Drivers: d.champDrivers.map((r) => ({ driver: String(r.driver_number), ...row(r) })),
+      Teams: (d.champTeams ?? []).map((r) => ({ team: r.team_name, ...row(r) })),
     });
   }
 
@@ -658,6 +688,18 @@ export async function loadOpenF1Session(
     get("weather", q),
     get("session_result", q).catch(() => []),
   ]);
+  // Datos opcionales: si alguno falla o no existe, la sesión sigue sin él.
+  const raceLike = /^(race|sprint)$/i.test(session.session_name ?? "");
+  const qualiName = /^sprint$/i.test(session.session_name ?? "") ? /^sprint (qualifying|shootout)$/i : /^qualifying$/i;
+  const qualiSession = raceLike
+    ? sessionsCache?.rows.find((r) => r.meeting_key === session.meeting_key && qualiName.test(r.session_name))
+    : undefined;
+  const [radio, grid, champDrivers, champTeams] = await Promise.all([
+    get("team_radio", q).catch(() => []),
+    qualiSession ? get("starting_grid", { session_key: qualiSession.session_key }).catch(() => []) : [],
+    raceLike ? get("championship_drivers", q).catch(() => []) : [],
+    raceLike ? get("championship_teams", q).catch(() => []) : [],
+  ]);
   if (!drivers.length || !laps.length) {
     throw new Error("OpenF1 todavía no tiene datos de esta sesión (el histórico gratuito se libera unos 30 minutos después del final).");
   }
@@ -716,6 +758,10 @@ export async function loadOpenF1Session(
     raceControl,
     weather,
     results,
+    radio,
+    grid,
+    champDrivers,
+    champTeams,
     location,
     car,
   });

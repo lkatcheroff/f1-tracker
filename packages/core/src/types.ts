@@ -56,6 +56,8 @@ export interface DriverRow {
   retired: boolean;
   stopped: boolean;
   knockedOut: boolean;
+  /** puesto de largada según la clasificación; null si la fuente no lo informa */
+  grid: number | null;
   tyre: Tyre | null;
   /** Posición en pista (unidades del feed, 1/10 m). Si el auto deja de transmitir, queda la última conocida. */
   xy: [number, number] | null;
@@ -101,6 +103,8 @@ export interface Weather {
   air: number | null;
   track: number | null;
   humidity: number | null;
+  /** hPa */
+  pressure: number | null;
   rain: boolean;
   windSpeed: number | null;
   windDir: number | null;

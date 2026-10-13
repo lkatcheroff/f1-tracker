@@ -32,5 +32,9 @@ export function insightsAt(insights: SessionInsights, now: number): SessionInsig
     events: visible(insights.events, now),
     neutral: neutralAt(insights.neutral, now),
     changes: visible(insights.changes, now),
+    weather: visible(insights.weather, now),
+    radio: visible(insights.radio, now),
+    // el campeonato después de la carrera delata el resultado: recién cuando termina
+    championship: insights.championship && insights.championship.ts <= now ? insights.championship : null,
   };
 }

@@ -1,5 +1,6 @@
-import { activeBattles, neutralAt, PARAMS, type Params, projections, visible } from "@f1/core";
+import { activeBattles, insightsAt, neutralAt, PARAMS, type Params, projections, visible } from "@f1/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChampionshipPanel } from "./ChampionshipPanel";
 import { Controls } from "./Controls";
 import { useCircuit } from "./circuit";
 import { DataQualityNote } from "./DataQualityNote";
@@ -14,11 +15,13 @@ import { PHONE, useMediaQuery } from "./media";
 import { PacePanel } from "./PacePanel";
 import { RaceControl } from "./RaceControl";
 import { RaceState } from "./RaceState";
+import { RadioPanel } from "./RadioPanel";
 import { TelemetryPanel } from "./TelemetryPanel";
 import { Tower } from "./Tower";
 import { TrackMap } from "./TrackMap";
 import type { Target } from "./transport";
 import { useTracker } from "./useTracker";
+import { WeatherPanel } from "./WeatherPanel";
 
 const MAX_SERIES = SERIES_COLORS.length;
 
@@ -194,6 +197,21 @@ export function SessionView({ target }: { target: Target }) {
       onResetHighWater={() => resetHighWater(time)}
     />
   );
+  // Lo que se conoce hasta ahora: clima, radio y campeonato pasan por la compuerta de spoilers.
+  const known = useMemo(() => (insights ? insightsAt(insights, time) : null), [insights, time]);
+  const weatherPanel = known && <WeatherPanel samples={known.weather} />;
+  const radioPanel = known && (
+    <RadioPanel
+      clips={known.radio}
+      drivers={known.drivers}
+      startTs={known.startTs}
+      onJump={(ts) => {
+        send({ type: "seek", ts: Math.max(0, ts - 3000) });
+        send({ type: "play" });
+      }}
+    />
+  );
+  const championshipPanel = known?.championship && <ChampionshipPanel data={known.championship} drivers={known.drivers} />;
   const pace = insights?.isRace && <PacePanel insights={insights} now={time} selected={selectedColors} />;
   const ideal = insights && !insights.isRace && <IdealPanel insights={insights} now={time} />;
   const dominance = target.mode === "replay" && (
@@ -315,6 +333,7 @@ export function SessionView({ target }: { target: Target }) {
                   <>
                     {map}
                     {raceState}
+                    {weatherPanel}
                   </>
                 )}
                 {shown === "gaps" && (
@@ -327,6 +346,8 @@ export function SessionView({ target }: { target: Target }) {
                 {shown === "events" && (
                   <>
                     {eventPanel}
+                    {radioPanel}
+                    {championshipPanel}
                     {raceControl}
                   </>
                 )}
@@ -345,7 +366,10 @@ export function SessionView({ target }: { target: Target }) {
                 <aside>
                   {map}
                   {raceState}
+                  {weatherPanel}
                   {eventPanel}
+                  {radioPanel}
+                  {championshipPanel}
                   {pace}
                   {ideal}
                   {dominance}

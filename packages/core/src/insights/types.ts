@@ -12,7 +12,8 @@ export type EventKind =
   | "neutralization" // Safety Car, Safety Car virtual o bandera roja
   | "battle" // duelo
   | "undercut"
-  | "overcut";
+  | "overcut"
+  | "weather"; // empieza o deja de llover
 
 export interface InsightEvent {
   /** estable: `${kind}:${ts}:${drivers.join("-")}` */
@@ -103,6 +104,35 @@ export interface Battle {
   result: "passed" | "held" | "open";
 }
 
+/** Una lectura del clima. Los valores que el feed no trae quedan en null. */
+export interface WeatherSample {
+  ts: number;
+  air: number | null;
+  track: number | null;
+  humidity: number | null;
+  /** hPa */
+  pressure: number | null;
+  /** m/s */
+  windSpeed: number | null;
+  /** grados desde donde sopla, 0 = norte */
+  windDir: number | null;
+  rain: boolean;
+}
+
+/** Un mensaje de radio del equipo (audio). */
+export interface RadioClip {
+  ts: number;
+  driver: string;
+  url: string;
+}
+
+/** Campeonato antes y después de la carrera. Se conoce recién al terminar. */
+export interface Championship {
+  ts: number;
+  drivers: { driver: string; posStart: number; pos: number; ptsStart: number; pts: number }[];
+  teams: { team: string; posStart: number; pos: number; ptsStart: number; pts: number }[];
+}
+
 export interface DataQuality {
   source: "official" | "openf1" | "recording";
   hasPositions: boolean;
@@ -147,6 +177,14 @@ export interface SessionInsights {
   pitLossSec: { value: number; estimated: boolean };
   /** todos los cambios de posición, con su clase (los sobrepasos son los `onTrack`) */
   changes: PositionChange[];
+  /** clima durante la sesión, para el panel y para marcar la lluvia */
+  weather: WeatherSample[];
+  /** mensajes de radio con audio (solo OpenF1) */
+  radio: RadioClip[];
+  /** campeonato antes y después de la carrera; null si la fuente no lo trae o la sesión no es de puntos */
+  championship: Championship | null;
+  /** posición de largada según la clasificación (antes de sanciones de parrilla); vacío si la fuente no la trae */
+  officialGrid: Record<string, number>;
   dataQuality: DataQuality;
 }
 

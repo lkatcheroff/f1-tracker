@@ -12,6 +12,9 @@
 
 - **Replay sincronizado con el video**: apretás *Sync: largada* cuando se apagan los semáforos y el resto sigue solo. Con *Sin spoilers* la barra va por vuelta y nada muestra lo que todavía no viste.
 - **Eventos sobre la barra** y crónica generada por reglas (sin IA): sobrepasos, cambios de líder, paradas, vuelta rápida, abandonos, sanciones, duelos, undercut y overcut. Un clic salta al momento.
+- **Radio de los equipos**: los mensajes de audio de cada piloto, con botón para escucharlos y para ir a ese momento. Solo los que ya pasaron.
+- **Clima**: pista, aire, humedad, viento, presión y lluvia, con su evolución; la crónica avisa cuando empieza o deja de llover.
+- **Parrilla oficial**, **tiempo parado en boxes** (cuando la fuente lo informa) y **campeonato** de pilotos y equipos, que aparece recién al terminar la carrera.
 - **Estrategia**: ritmo por neumático, proyección de "lo alcanza en N vueltas", dominio por tramos de pista, vuelta ideal y velocidades máximas.
 - **Telemetría y comparación** entre vueltas y pilotos, con mini-sectores en la torre.
 - **Clasificación** con corte, eliminados y tiempo restante de cada parte.

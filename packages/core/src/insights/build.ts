@@ -8,6 +8,7 @@ import { parseSteward } from "./parse";
 import { estimatePitLoss, findStrategyEvents, groupByDriver } from "./strategy";
 import type {
   Battle,
+  Championship,
   ChangeClass,
   DataQuality,
   DataSourceKind,
@@ -16,8 +17,10 @@ import type {
   LapRow,
   NeutralSpan,
   PositionChange,
+  RadioClip,
   SessionInsights,
   Stint,
+  WeatherSample,
 } from "./types";
 
 type Obj = Record<string, any>;
@@ -131,6 +134,14 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
   let orderDirty = false;
   let lastOrder: string[] | null = null;
   let gridOrder: string[] | null = null;
+  const weather: WeatherSample[] = [];
+  const radio: RadioClip[] = [];
+  const officialGrid: Record<string, number> = {};
+  let championship: Championship | null = null;
+  let rainNow: boolean | null = null;
+  const wx: Omit<WeatherSample, "ts" | "rain"> = { air: null, track: null, humidity: null, pressure: null, windSpeed: null, windDir: null };
+  const finite = (v: unknown): number | null =>
+    v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
   const flips: RawFlip[] = [];
   const orderAt: { ts: number; order: string[] }[] = [];
 
@@ -283,6 +294,59 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
       if (status === "2") trackYellow = true;
       else if (status === "1" || status === "4" || status === "5" || status === "6") trackYellow = false;
       updateYellow(m.ts);
+    } else if (m.topic === "WeatherData") {
+      // Mensajes parciales: lo que no viene sigue como estaba.
+      const set = <K extends keyof typeof wx>(k: K, v: unknown) => {
+        const n = finite(v);
+        if (n !== null) wx[k] = n;
+      };
+      set("air", data?.AirTemp);
+      set("track", data?.TrackTemp);
+      set("humidity", data?.Humidity);
+      set("pressure", data?.Pressure);
+      set("windSpeed", data?.WindSpeed);
+      set("windDir", data?.WindDirection);
+      const rain: boolean = data?.Rainfall === undefined ? (rainNow ?? false) : Number(data.Rainfall) > 0;
+      weather.push({ ts: m.ts, ...wx, rain });
+      if (rainNow !== null && rain !== rainNow) {
+        events.push({
+          id: "",
+          kind: "weather",
+          ts: m.ts,
+          seekTs: m.ts,
+          lap: isRace ? leaderLap : null,
+          drivers: [],
+          data: { rain },
+          confidence: "high",
+        });
+      }
+      rainNow = rain;
+    } else if (m.topic === "TeamRadio") {
+      const c = data?.Capture as Obj | undefined;
+      if (c?.Url && c.RacingNumber !== undefined) radio.push({ ts: m.ts, driver: String(c.RacingNumber), url: String(c.Url) });
+    } else if (m.topic === "Championship") {
+      championship = {
+        ts: m.ts,
+        drivers: asList<Obj>(data?.Drivers).map((d) => ({
+          driver: String(d.driver),
+          posStart: d.posStart,
+          pos: d.pos,
+          ptsStart: d.ptsStart,
+          pts: d.pts,
+        })),
+        teams: asList<Obj>(data?.Teams).map((t) => ({
+          team: String(t.team),
+          posStart: t.posStart,
+          pos: t.pos,
+          ptsStart: t.ptsStart,
+          pts: t.pts,
+        })),
+      };
+    } else if (m.topic === "TimingAppData") {
+      for (const [num, l] of Object.entries<Obj>((data?.Lines ?? {}) as Obj)) {
+        const g = finite(l?.GridPos);
+        if (g !== null && g > 0) officialGrid[num] = g;
+      }
     } else if (m.topic === "RaceControlMessages") {
       for (const r of asList<Obj>(data?.Messages)) handleRaceControl(r, m.ts);
     } else if (m.topic === "TimingData") {
@@ -322,7 +386,13 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
             seekTs: ds.pitIn,
             lap: ds.pitLap,
             drivers: [num],
-            data: { laneSec: Math.round((m.ts - ds.pitIn) / 100) / 10, stops, compound: null },
+            data: {
+              laneSec: Math.round((m.ts - ds.pitIn) / 100) / 10,
+              // Tiempo parado: solo cuando la fuente lo informa (OpenF1 no lo trae en todas las temporadas).
+              stopSec: typeof l.StopDuration === "number" && l.StopDuration > 0 ? l.StopDuration : null,
+              stops,
+              compound: null,
+            },
             confidence: opts.source === "openf1" ? "approx" : "high",
           });
           ds.pitIn = null;
@@ -603,6 +673,10 @@ export function buildInsights(messages: RawMessage[], opts: BuildOptions): Sessi
     totalLaps,
     pitLossSec,
     changes,
+    weather,
+    radio,
+    championship,
+    officialGrid,
     dataQuality: quality,
   };
 }

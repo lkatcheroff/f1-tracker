@@ -134,6 +134,10 @@ Verificados contra la carrera de Bakú (fixture) y los mensajes de Race Control 
 
 Formato real de `ExtrapolatedClock` en práctica y clasificación (archivo oficial): una ancla por tramo, `{Utc, Remaining, Extrapolating}`. El reinicio de cada parte llega detenido y sin `Extrapolating` (queda como estaba); el reloj arranca corriendo con `Remaining` un segundo menor; la bandera roja lo detiene con `Extrapolating: false`; al final de la parte queda en `00:00:00`. `SessionPart` llega en `TimingData` unos segundos **después** del reinicio del reloj, por eso la parte de un reinicio se asigna con la que rige al final del tramo. En Bakú 2026 las partes duraron 18:00, 15:00 y **13:00** (no 12): por eso el adaptador de OpenF1 prefiere la duración observada. Resultado: el reloj reconstruido desde OpenF1 coincide con el oficial en los seis instantes comparados.
 
+## 10. Datos extra de OpenF1 (2026-10-13)
+
+Comprobado contra la API: `team_radio` devuelve audio (`audio/mpeg`, ~30 KB por mensaje, sin transcripción) en `livetiming.formula1.com/static/.../TeamRadio/`. `starting_grid` responde solo con la clave de la sesión de clasificación. `pit.stop_duration` es `null` en las 25 paradas de Singapur 2026 y en las 28 de Estados Unidos 2024, y está en las 18 de Estados Unidos 2025. `championship_drivers`/`championship_teams` responden con la clave de la carrera. `laps.i1_speed`, `i2_speed`, `st_speed` y `car_data.drs` existen y no se usan. **UNVERIFIED:** si el audio de F1 se puede reproducir desde cualquier red; desde la conexión usada en las pruebas sí.
+
 ## 8. Presupuestos medidos y lo que sigue sin comprobar (2026-10-08)
 
 Medido en un laptop, con la carrera de Bakú (fixture, 22 pilotos):

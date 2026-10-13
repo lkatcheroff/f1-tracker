@@ -437,3 +437,101 @@ describe("vueltas de salida y mini-sectores", () => {
     expect(first).toEqual([30_000]);
   });
 });
+
+describe("radio, parrilla, campeonato, tiempo parado y clima", () => {
+  const quali = {
+    ...session,
+    session_key: 8,
+    session_name: "Qualifying",
+    session_type: "Qualifying",
+    date_start: iso(-48 * 3600_000),
+    date_end: iso(-47 * 3600_000),
+  };
+  const raceLaps = () => [
+    { driver_number: 1, lap_number: 1, date_start: iso(0), lap_duration: 60 },
+    { driver_number: 1, lap_number: 2, date_start: iso(60_000), lap_duration: 60 },
+  ];
+  const routes = (): Record<string, Handler> => ({
+    ...base,
+    sessions: () => [session, quali],
+    laps: raceLaps,
+    race_control: () => [{ date: iso(130_000), category: "Flag", flag: "CHEQUERED", scope: "Track", message: "CHEQUERED FLAG" }],
+    team_radio: () => [{ date: iso(30_000), driver_number: 1, recording_url: "https://ejemplo.test/radio/a.mp3" }],
+    starting_grid: (url) => (url.searchParams.get("session_key") === "8" ? [{ position: 3, driver_number: 1, lap_duration: 90 }] : []),
+    championship_drivers: () => [{ driver_number: 1, position_start: 2, position_current: 1, points_start: 236, points_current: 261 }],
+    championship_teams: () => [{ team_name: "Equipo", position_start: 1, position_current: 1, points_start: 400, points_current: 430 }],
+    pit: () => [{ driver_number: 1, date: iso(100_000), lane_duration: 22, stop_duration: 2.4, lap_number: 2 }],
+    weather: () => [
+      {
+        date: iso(10_000),
+        air_temperature: 30,
+        track_temperature: 44,
+        humidity: 70,
+        pressure: 1008.9,
+        rainfall: 0,
+        wind_speed: 1.5,
+        wind_direction: 147,
+      },
+    ],
+    location: () => loop(0, 60_000),
+  });
+  const load = async () => prepareMessages(await loadOpenF1Session(session.date_start, () => {}));
+
+  it("la radio llega como mensajes con su piloto y su audio", async () => {
+    fake(routes());
+    const radio = (await load()).filter((m) => m.topic === "TeamRadio");
+    expect(radio).toHaveLength(1);
+    expect(radio[0].data).toEqual({ Capture: { Utc: iso(30_000), RacingNumber: "1", Url: "https://ejemplo.test/radio/a.mp3" } });
+  });
+
+  it("la parrilla se pide a la clasificación del mismo fin de semana", async () => {
+    const { log } = fake(routes());
+    const msgs = await load();
+    const asked = log.filter((l) => l.endpoint === "starting_grid").map((l) => l.url.searchParams.get("session_key"));
+    expect(asked).toEqual(["8"]);
+    const lines = msgs.find((m) => m.topic === "TimingAppData" && m.ts === 0)?.data as Row;
+    expect(lines.Lines["1"].GridPos).toBe("3");
+  });
+
+  it("el campeonato se publica recién en la bandera a cuadros", async () => {
+    fake(routes());
+    const champ = (await load()).find((m) => m.topic === "Championship");
+    expect(champ?.ts).toBe(130_000);
+    expect(champ?.data).toMatchObject({
+      Drivers: [{ driver: "1", posStart: 2, pos: 1, ptsStart: 236, pts: 261 }],
+      Teams: [{ team: "Equipo", pos: 1, pts: 430 }],
+    });
+  });
+
+  it("el tiempo parado y la presión pasan al feed", async () => {
+    fake(routes());
+    const msgs = await load();
+    const out = msgs.find((m) => (m.data as Row).Lines?.["1"]?.InPit === false && m.ts > 0);
+    expect(((out as RawMessage).data as Row).Lines["1"].StopDuration).toBe(2.4);
+    expect(((msgs.find((m) => m.topic === "WeatherData") as RawMessage).data as Row).Pressure).toBe("1008.9");
+  });
+
+  it("sin tiempo parado en la fuente (2024, 2026), la parada sigue sin ese campo", async () => {
+    fake({ ...routes(), pit: () => [{ driver_number: 1, date: iso(100_000), lane_duration: 22, stop_duration: null, lap_number: 2 }] });
+    const out = (await load()).find((m) => (m.data as Row).Lines?.["1"]?.InPit === false && m.ts > 0);
+    expect(((out as RawMessage).data as Row).Lines["1"]).toEqual({ InPit: false });
+  });
+
+  it("en práctica no se piden parrilla ni campeonato", async () => {
+    const { log } = fake({ ...routes(), sessions: () => [{ ...session, session_name: "Practice 1", session_type: "Practice" }] });
+    await loadOpenF1Session(session.date_start, () => {});
+    for (const e of ["starting_grid", "championship_drivers", "championship_teams"]) expect(log.some((l) => l.endpoint === e)).toBe(false);
+    expect(log.some((l) => l.endpoint === "team_radio")).toBe(true);
+  });
+
+  it("si un dato opcional falla, la sesión se carga igual", async () => {
+    fake({
+      ...routes(),
+      team_radio: () => new Response("{}", { status: 400 }),
+      championship_drivers: () => new Response("{}", { status: 400 }),
+    });
+    const msgs = await load();
+    expect(msgs.some((m) => m.topic === "TimingData")).toBe(true);
+    expect(msgs.some((m) => m.topic === "TeamRadio")).toBe(false);
+  });
+});

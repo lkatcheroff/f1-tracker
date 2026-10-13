@@ -63,6 +63,7 @@ const fmtCut = (g: number) => `${g >= 0 ? "+" : "−"}${Math.abs(g).toFixed(3)}`
 
 export const Tower = memo(function Tower({ drivers, through, selected, onToggle }: Props) {
   const cut = through !== null;
+  const hasGrid = drivers.some((d) => d.grid !== null);
   const lastSafe = cut ? drivers.filter((d) => !d.knockedOut && !d.retired)[through - 1]?.num : null;
   return (
     <div className="panel tower-wrap">
@@ -71,6 +72,11 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
           <tr>
             <th className="num">Pos</th>
             <th>Piloto</th>
+            {hasGrid && (
+              <th className="num hide-sm" title="Puesto de largada según la clasificación">
+                Parr.
+              </th>
+            )}
             <th className="num">Gap</th>
             <th className="num">Int</th>
             <th className="num">Última</th>
@@ -109,6 +115,7 @@ export const Tower = memo(function Tower({ drivers, through, selected, onToggle 
                     {series && <span className="series-key" style={{ background: series }} />}
                   </div>
                 </td>
+                {hasGrid && <td className="num hide-sm muted">{d.grid ?? ""}</td>}
                 <td className="num">{d.gap}</td>
                 <td className={`num ${d.catching ? "catching" : ""}`}>{d.interval}</td>
                 <td className={`num ${timedClass(d.lastLap)}`}>{d.lastLap.value}</td>

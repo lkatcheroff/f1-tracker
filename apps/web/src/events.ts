@@ -17,6 +17,7 @@ export const EVENT_STYLE: Record<EventKind, { symbol: string; label: string; col
   battle: { symbol: "⚔", label: "Duelos", color: "var(--orange)", on: false },
   undercut: { symbol: "↗", label: "Undercut", color: "var(--accent)", on: true },
   overcut: { symbol: "↘", label: "Overcut", color: "var(--accent)", on: true },
+  weather: { symbol: "☂", label: "Lluvia", color: "var(--blue)", on: true },
 };
 
 export const EVENT_KINDS = Object.keys(EVENT_STYLE) as EventKind[];

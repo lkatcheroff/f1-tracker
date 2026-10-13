@@ -22,6 +22,10 @@ Qué fuente se usa para qué, qué falta con cada una y dónde están sus térmi
 | Abandonos | Del feed | Deducidos del resultado final: aproximados | Del feed |
 | Estado de pista (Safety Car, banderas) | Del feed | Deducido de los mensajes de Race Control: aproximado | Del feed |
 | Safety Car en el mapa | Sí | No | No |
+| Radio de los equipos (audio) | No (en esta versión) | Sí: enlace al mp3 de cada mensaje | No |
+| Parrilla oficial | `GridPos` del feed | Sí, de la clasificación del mismo fin de semana | No |
+| Tiempo parado en boxes | No | Solo cuando OpenF1 lo informa (2025 sí; 2024 y 2026 vienen vacíos) | No |
+| Campeonato | No (en esta versión) | Sí, solo en carrera y sprint | No |
 | Tiempo restante de la sesión | Reloj de la transmisión | Reconstruido con la duración de cada parte y las banderas rojas | Del feed |
 
 Cada sesión lleva su `dataQuality` y la pantalla muestra un aviso cuando la fuente no es el archivo oficial. Los eventos que dependen de una aproximación llevan un ≈ delante.
@@ -39,3 +43,11 @@ Comparado con el reloj oficial en la clasificación de Bakú 2026 (instantes de 
 ## Mini-sectores con OpenF1
 
 OpenF1 publica el color final de cada mini-sector (violeta, verde, amarillo) por vuelta, pero no cuándo se completó. El adaptador reparte el tiempo del sector en partes iguales. Se probó repartir por distancia recorrida (posición del auto) y se midió contra el feed oficial de la clasificación de Bakú 2026 (9.300 mini-sectores): error mediano de 1,3 s con los dos métodos, sin diferencia, así que quedó el más simple. Los límites oficiales de cada mini-sector no se publican. Para el momento exacto hace falta el archivo oficial.
+
+## Datos extra de OpenF1
+
+- **Radio:** `team_radio` da la hora, el piloto y la dirección de un mp3 corto en el archivo de F1. El audio lo reproduce el navegador del que mira; el sitio no lo copia ni lo aloja. No hay transcripción.
+- **Parrilla:** `starting_grid` está asociada a la sesión de **clasificación** del fin de semana, no a la carrera (con la clave de la carrera responde vacío). El cargador busca la clasificación del mismo fin de semana (la clasificación sprint, para el sprint).
+- **Tiempo parado:** `pit.stop_duration` viene `null` en todas las paradas de 2024 y 2026 y completo en 2025. Se usa cuando existe; si no, la crónica solo cuenta el paso por la calle de boxes.
+- **Campeonato:** `championship_drivers` y `championship_teams` traen posición y puntos antes y después de la carrera. Se publican en el momento de la bandera a cuadros para no delatar el resultado.
+- **Clima:** el feed oficial y OpenF1 traen los mismos campos; se agregó la presión, que no se usaba.

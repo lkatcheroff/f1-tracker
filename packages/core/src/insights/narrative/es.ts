@@ -39,8 +39,12 @@ export const es = {
   pit: (f: Facts, d: Data) => {
     const tyre = d.compound ? ` y monta ${COMPOUND[String(d.compound)] ?? String(d.compound).toLowerCase()}` : "";
     const back = d.rejoinPos ? `, vuelve ${d.rejoinPos}.º` : "";
-    return `${lap(f)}${f.names[0]} para${tyre}${back} (${num1(Number(d.laneSec))} s en la calle de boxes).`;
+    const lane = `${num1(Number(d.laneSec))} s en la calle de boxes`;
+    // El tiempo parado, cuando la fuente lo informa: es lo que mide al equipo.
+    const detail = d.stopSec ? `${num1(Number(d.stopSec))} s parado, ${lane}` : lane;
+    return `${lap(f)}${f.names[0]} para${tyre}${back} (${detail}).`;
   },
+  weather: (f: Facts, d: Data) => `${lap(f)}${d.rain ? "Empieza a llover." : "Deja de llover."}`,
   fastestLap: (f: Facts, d: Data) => `${lap(f)}Vuelta rápida de ${f.names[0]}: ${lapTime(Number(d.lapMs))}.`,
   retirement: (f: Facts) => `${lap(f)}${f.names[0]} abandona.`,
   penalty: (f: Facts, d: Data) => `${lap(f)}Sanción para ${f.names[0]}: ${PENALTY_TEXT(d)}${reason(d)}.`,
