@@ -137,6 +137,10 @@ const fmtClock = (ms: number) => {
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 };
 
+/** Tope de una vuelta cronometrada en práctica y clasificación: una vuelta lenta de boxes puede pasar los 4 minutos, no los 6. */
+const MAX_LAP_SEC = 400;
+const MAX_SECTOR_SEC = 180;
+
 const fmtGap = (v: unknown): string => {
   if (typeof v === "number") return v > 0 ? `+${v.toFixed(3)}` : "";
   const m = /(\d+)\s*L/i.exec(String(v ?? ""));
@@ -306,6 +310,11 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       lapStart.set(`${num}:${r.lap_number}`, start);
       lapStarts.push({ ts: start, lap: r.lap_number });
       if (r.is_pit_out_lap) line(start, num, { PitOut: true });
+      // En práctica y clasificación, OpenF1 marca como vuelta de salida la que cruza el corte entre partes o una bandera roja,
+      // y le da duraciones de más de diez minutos. Una vuelta de salida no es una vuelta cronometrada: sin tiempo.
+      // (En carrera la vuelta 1 también viene marcada, pero sí se cronometra.)
+      const outLap = !isRace && !!r.is_pit_out_lap;
+      const timed = typeof r.lap_duration === "number" && !outLap && (isRace || r.lap_duration <= MAX_LAP_SEC);
       // Mini-sectores: al empezar la vuelta vuelven a cero y se completan repartidos a lo largo de cada sector
       // (OpenF1 da el estado final de cada uno, no cuándo se cruzó; el reparto parejo es una aproximación).
       const segs = [r.segments_sector_1, r.segments_sector_2, r.segments_sector_3];
@@ -316,18 +325,19 @@ export function adaptOpenF1(d: OpenF1Data): RawMessage[] {
       [r.duration_sector_1, r.duration_sector_2, r.duration_sector_3].forEach((v, i) => {
         if (typeof v !== "number") return;
         const sg = segs[i];
-        if (Array.isArray(sg)) {
+        if (Array.isArray(sg) && sg.length && !(outLap && v > MAX_SECTOR_SEC)) {
           sg.forEach((status: unknown, j: number) => {
             if (typeof status !== "number") return;
             line(Math.round(t + (v * 1000 * (j + 1)) / sg.length), num, { Sectors: { [i]: { Segments: { [j]: { Status: status } } } } });
           });
         }
         t += v * 1000;
-        events.push({ ts: t, num, lap: r.lap_number, kind: "sector", i, v });
+        // Un sector de más de 3 minutos en una vuelta de salida no es un tiempo: la vuelta cruzó un corte o una bandera roja.
+        if (!(outLap && v > MAX_SECTOR_SEC)) events.push({ ts: t, num, lap: r.lap_number, kind: "sector", i, v });
       });
       const nextStart = rows[idx + 1]?.date_start;
       const end = typeof r.lap_duration === "number" ? start + r.lap_duration * 1000 : nextStart ? at(nextStart) : null;
-      if (end !== null) events.push({ ts: end, num, lap: r.lap_number, kind: "lap", v: r.lap_duration ?? null });
+      if (end !== null) events.push({ ts: end, num, lap: r.lap_number, kind: "lap", v: timed ? r.lap_duration : null });
     });
   }
   events.sort((a, b) => a.ts - b.ts);

@@ -76,7 +76,7 @@ const QUALITY: Record<DataSourceKind, string[]> = {
   openf1: [
     "Abandonos deducidos del resultado final de OpenF1",
     "Estado de pista (Safety Car, banderas) deducido de los mensajes de Race Control",
-    "Mini-sectores repartidos en partes iguales a lo largo de cada sector",
+    "Mini-sectores: el color es el que publica OpenF1, pero el momento en que se completa cada uno se reparte en partes iguales a lo largo del sector",
     "Tiempo restante de la sesión calculado con la duración reglamentaria y las banderas rojas, no con el reloj oficial",
     "Sin Safety Car en el mapa",
   ],

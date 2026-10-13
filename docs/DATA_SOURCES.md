@@ -18,7 +18,7 @@ Qué fuente se usa para qué, qué falta con cada una y dónde están sus térmi
 | Orden de carrera y cambios de posición | Sí | Sí, los mismos | Sí |
 | Posiciones en el mapa | Sí | Sí | No |
 | Telemetría y comparación | Sí | Sí, casi idéntica (mismo tiempo de vuelta al ms, 0,7 km/h de diferencia media) | No |
-| Mini-sectores | Reales | Repartidos en partes iguales: aproximados | Según lo que mande el feed |
+| Mini-sectores | Reales: color y momento | El color es el real; el momento en que se completa cada uno se reparte en partes iguales del sector | Según lo que mande el feed |
 | Abandonos | Del feed | Deducidos del resultado final: aproximados | Del feed |
 | Estado de pista (Safety Car, banderas) | Del feed | Deducido de los mensajes de Race Control: aproximado | Del feed |
 | Safety Car en el mapa | Sí | No | No |
@@ -35,3 +35,7 @@ Los hallazgos medidos (formatos de mensajes, coincidencia entre OpenF1 y el feed
 OpenF1 no publica el cronómetro de práctica y clasificación. El adaptador lo reconstruye: arranca cuando se abre la calle de boxes, se detiene con la bandera roja, vuelve a su duración al empezar cada parte y llega a cero con la bandera a cuadros. La duración de cada parte sale del reglamento (práctica 60 min; clasificación 18, 15 y 12; clasificación sprint 12, 10 y 8). Si una parte corrió sin banderas rojas, manda lo observado, porque la duración real puede cambiar de una sesión a otra.
 
 Comparado con el reloj oficial en la clasificación de Bakú 2026 (instantes de control en Q1, Q2 y Q3): diferencia de 0 segundos en los seis. Es una sola sesión: con bandera roja el reloj reconstruido puede desviarse unos segundos, y por eso el aviso de calidad de la sesión lo declara.
+
+## Mini-sectores con OpenF1
+
+OpenF1 publica el color final de cada mini-sector (violeta, verde, amarillo) por vuelta, pero no cuándo se completó. El adaptador reparte el tiempo del sector en partes iguales. Se probó repartir por distancia recorrida (posición del auto) y se midió contra el feed oficial de la clasificación de Bakú 2026 (9.300 mini-sectores): error mediano de 1,3 s con los dos métodos, sin diferencia, así que quedó el más simple. Los límites oficiales de cada mini-sector no se publican. Para el momento exacto hace falta el archivo oficial.

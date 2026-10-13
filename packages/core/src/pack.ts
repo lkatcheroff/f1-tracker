@@ -21,7 +21,7 @@ export const REPLAY_TOPICS = [
 ];
 
 /** Versión del formato. Va también en el nombre del archivo: al subirla, las sesiones publicadas se regeneran. */
-export const PACK_VERSION = 5;
+export const PACK_VERSION = 6;
 const VERSION = PACK_VERSION;
 /** Las versiones anteriores a esta no se pueden leer. */
 const MIN_VERSION = 2;

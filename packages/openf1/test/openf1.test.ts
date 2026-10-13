@@ -377,3 +377,63 @@ describe("reloj de la sesión", () => {
     expect(run("Race", "Race", [green(MIN)])).toEqual([]);
   });
 });
+
+describe("vueltas de salida y mini-sectores", () => {
+  const lap = (n: number, startMs: number, durationSec: number, extra: Row = {}) => ({
+    driver_number: 1,
+    lap_number: n,
+    date_start: iso(startMs),
+    lap_duration: durationSec,
+    is_pit_out_lap: false,
+    ...extra,
+  });
+  const lastLapTimes = (name: string, type: string, laps: Row[], location: number[] = []) => {
+    const out = adaptOpenF1({
+      session: { ...session, session_name: name, session_type: type },
+      meeting: undefined,
+      drivers: [driver],
+      laps,
+      intervals: [],
+      position: [],
+      stints: [],
+      pit: [],
+      raceControl: [],
+      weather: [],
+      results: [],
+      location,
+      car: [],
+    });
+    return out;
+  };
+  const texts = (msgs: RawMessage[]) =>
+    msgs
+      .filter((m) => m.topic === "TimingData")
+      .map((m) => (m.data as Row).Lines?.["1"]?.LastLapTime?.Value)
+      .filter((v) => v);
+
+  it("clasificación: una vuelta de salida que cruza un corte (14:33.670) no es un tiempo de vuelta", () => {
+    const msgs = lastLapTimes("Qualifying", "Qualifying", [
+      lap(1, 0, 90, { is_pit_out_lap: true }),
+      lap(2, 90_000, 87.5),
+      lap(3, 180_000, 873.67, { is_pit_out_lap: true }),
+    ]);
+    expect(texts(msgs)).toEqual(["1:27.500"]);
+    expect(JSON.stringify(msgs)).not.toContain("14:33");
+  });
+
+  it("una vuelta lenta de boxes sin marca de salida sigue contando (3:38)", () => {
+    expect(texts(lastLapTimes("Qualifying", "Qualifying", [lap(2, 0, 218.9)]))).toEqual(["3:38.900"]);
+  });
+
+  it("carrera: la vuelta 1, que OpenF1 marca como de salida, sí se cronometra", () => {
+    expect(texts(lastLapTimes("Race", "Race", [lap(1, 0, 98.2, { is_pit_out_lap: true })]))).toEqual(["1:38.200"]);
+  });
+
+  it("los mini-sectores se reparten en partes iguales del tiempo del sector", () => {
+    const msgs = lastLapTimes("Qualifying", "Qualifying", [{ ...lap(2, 0, 60), duration_sector_1: 60, segments_sector_1: [2049, 2049] }]);
+    const first = msgs
+      .filter((m) => m.topic === "TimingData" && (m.data as Row).Lines?.["1"]?.Sectors?.["0"]?.Segments?.["0"]?.Status === 2049)
+      .map((m) => m.ts);
+    expect(first).toEqual([30_000]);
+  });
+});
