@@ -17,6 +17,7 @@
     "e2e:mobile": "tsx scripts/e2e-mobile.ts",
     "icons": "tsx scripts/icons.ts",
     "transcribe": "tsx scripts/transcribe.ts",
+    "radio-helper": "tsx scripts/radio-helper.ts",
     "transcribe:auto:install": "bash scripts/install-auto-transcribe.sh",
     "transcribe:auto:remove": "bash scripts/remove-auto-transcribe.sh",
     "transcribe:setup": "bash scripts/setup-whisper.sh",

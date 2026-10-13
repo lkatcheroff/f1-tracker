@@ -6,14 +6,13 @@
 //               npm run transcribe -- --session 11388 --model base
 // Opciones: --year 2026  --max-sessions 4  --model small  --language en|auto  --session <clave de OpenF1>  --dry-run
 // Luego hay que subir los archivos nuevos de transcripts/ a GitHub (git add transcripts && git commit && git push).
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { type RadioTranscripts, radioId, radioTranscriptFile } from "@f1/core";
+import { type RadioTranscripts, radioTranscriptFile } from "@f1/core";
 import { listOpenF1Meetings, loadOpenF1Radio } from "@f1/openf1";
-import { buildPrompt, type Clip, pendingByFile, serialize } from "./transcribe-lib";
+import { buildPrompt, type Clip, mergeCache, pendingByFile, serialize, transcribeUrls } from "./transcribe-lib";
 
 const arg = (name: string, fallback?: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -33,6 +32,14 @@ if (!dry && !existsSync(python)) {
   process.exit(1);
 }
 await mkdir(outDir, { recursive: true });
+const whisper = (prompt: string) => ({ python, script: path.resolve("scripts/transcribe.py"), model, language, prompt });
+
+// Lo que el servicio local transcribió mientras se miraban sesiones se suma a lo publicado.
+const cacheDir = arg("cache", path.join(os.homedir(), "Library/Application Support/f1-tracker-auto/radio-cache")) as string;
+if (!dry) {
+  const merged = await mergeCache(cacheDir, outDir);
+  if (merged) console.log(`${merged} mensajes del servicio local sumados a transcripts/`);
+}
 
 const readJson = async (file: string): Promise<RadioTranscripts> =>
   JSON.parse(await readFile(path.join(outDir, file), "utf8").catch(() => "{}"));
@@ -63,51 +70,16 @@ for (const s of sessions) {
     continue;
   }
 
-  const tmp = await mkdtemp(path.join(tmpdir(), "radio-"));
-  try {
-    for (const [file, list] of pending) {
-      // Descarga de los audios (desde esta red F1 responde; desde GitHub, no).
-      const items: { id: string; path: string }[] = [];
-      for (const c of list) {
-        const id = radioId(c.url) as string;
-        const res = await fetch(c.url);
-        if (res.status === 403) throw new Error(`F1 respondió 403 al pedir ${id}: esta red no llega a los audios.`);
-        if (!res.ok) {
-          console.warn(`  sin audio (${res.status}): ${id}`);
-          continue;
-        }
-        const p = path.join(tmp, id);
-        await writeFile(p, Buffer.from(await res.arrayBuffer()));
-        items.push({ id, path: p });
-      }
-      const result = await run(items, buildPrompt(drivers));
-      const merged = { ...existing[file], ...result };
-      await writeFile(path.join(outDir, file), serialize(merged));
-      console.log(`  ${file}: ${Object.keys(result).length} transcriptos`);
-    }
-  } finally {
-    await rm(tmp, { recursive: true, force: true });
+  for (const [file, list] of pending) {
+    const result = await transcribeUrls(
+      list.map((c) => c.url),
+      whisper(buildPrompt(drivers)),
+    );
+    await writeFile(path.join(outDir, file), serialize({ ...existing[file], ...result }));
+    console.log(`  ${file}: ${Object.keys(result).length} transcriptos`);
   }
   done++;
 }
 console.log(
   done ? `Listo. Subí los cambios: git add transcripts && git commit -m "Transcripciones" && git push` : "No hay nada para transcribir.",
 );
-
-function run(items: { id: string; path: string }[], prompt: string): Promise<RadioTranscripts> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(python, ["scripts/transcribe.py", "--model", model, "--language", language, "--prompt", prompt], {
-      stdio: ["pipe", "pipe", "inherit"],
-    });
-    let out = "";
-    child.stdout.on("data", (b) => {
-      out += b;
-    });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code !== 0) return reject(new Error(`Whisper terminó con error (código ${code})`));
-      resolve(JSON.parse(out));
-    });
-    child.stdin.end(JSON.stringify(items));
-  });
-}

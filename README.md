@@ -130,6 +130,12 @@ git add transcripts && git commit -m "Transcripciones" && git push
 
 **Automático en tu Mac.** `npm run transcribe:auto:install` deja una tarea de macOS (launchd) que cada 30 minutos, y al despertar la Mac, transcribe las sesiones que falten y sube el texto a GitHub desde una copia propia del repositorio (`~/Library/Application Support/f1-tracker-auto`). El registro está en `~/Library/Logs/f1-tracker-transcribe.log` y se quita con `npm run transcribe:auto:remove`. Solo corre mientras la Mac esté prendida y con internet: una sesión nueva recibe su texto media hora después de reaparecer la conexión, más lo que tarde en republicarse el sitio.
 
+**Texto al instante al abrir la página.** La misma instalación deja además un servicio en tu Mac (`127.0.0.1:8788`, siempre encendido). Cuando abrís una sesión con mensajes sin texto, la página se lo pide, el servicio baja los audios, los transcribe y el texto aparece en el panel en unos minutos ("Transcribiendo en esta compu: faltan N…"). Lo transcripto se suma luego a lo que sube la tarea automática. Detalles:
+- **Solo en la compu donde está instalado.** En otro dispositivo (el teléfono, por ejemplo) no se ve, y la página no muestra ningún aviso.
+- **Permiso de Chrome.** La primera vez, Chrome pregunta si el sitio puede conectarse a "otras aplicaciones y servicios en este dispositivo". Hay que permitirlo.
+- **Seguridad.** Solo escucha en tu propia compu, solo acepta pedidos de este sitio y de `localhost:5173`, y solo baja audios de radio del archivo de F1.
+- **Costo.** Usa el procesador mientras transcribe (unos 5 a 10 segundos por mensaje con el modelo `small`) y la primera vez baja el modelo.
+
 **Por qué no se transcribe en el navegador ni en GitHub.** Los audios los sirve F1 sin los encabezados que permiten leerlos desde otro sitio (CORS): la página puede reproducirlos, pero no leer sus bytes, y GitHub recibe 403. Las dos cosas se verificaron.
 
 El texto queda en `transcripts/` (un archivo por sesión, un mensaje por línea) y la Action lo publica con el sitio. Cada mensaje se transcribe una sola vez. Es una transcripción automática: se equivoca con nombres y jerga, y la pantalla lo avisa. Es gratis: corre en CPU, sin claves ni servicios. El modelo `small` baja unos 480 MB la primera vez.

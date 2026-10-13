@@ -1,6 +1,7 @@
 import { type RadioClip, type RadioTranscripts, radioId, radioTranscriptFile, type SessionInsights, shortName } from "@f1/core";
 import { useEffect, useRef, useState } from "react";
 import { fmtDuration } from "./format";
+import { helperAvailable, helperTexts, requestTranscripts } from "./radioHelper";
 import { loadTranscripts } from "./transport";
 
 interface Props {
@@ -19,19 +20,64 @@ export function RadioPanel({ clips, drivers, startTs, onJump }: Props) {
   const [playing, setPlaying] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [all, setAll] = useState(false);
-  const [texts, setTexts] = useState<RadioTranscripts>({});
+  const [published, setPublished] = useState<RadioTranscripts>({});
+  const [loaded, setLoaded] = useState(false);
+  /** transcripciones que hizo el servicio local de esta compu, si está instalado */
+  const [local, setLocal] = useState<RadioTranscripts>({});
+  const [localPending, setLocalPending] = useState(0);
+  const asked = useRef(new Set<string>());
 
-  // Transcripciones automáticas: un archivo por sesión; si no existe, el panel sigue sin texto.
+  // Transcripciones publicadas: un archivo por sesión; si no existe, el panel sigue sin texto.
   const files = [...new Set(clips.map((c) => radioTranscriptFile(c.url)).filter((f): f is string => !!f))].join(",");
   useEffect(() => {
     let live = true;
+    setLoaded(false);
     Promise.all(files.split(",").filter(Boolean).map(loadTranscripts)).then((all) => {
-      if (live) setTexts(Object.assign({}, ...all));
+      if (!live) return;
+      setPublished(Object.assign({}, ...all));
+      setLoaded(true);
     });
     return () => {
       live = false;
     };
   }, [files]);
+
+  const texts = { ...local, ...published };
+
+  // Lo que falta: si hay un servicio local (esta compu), se lo pide y se muestra a medida que llega.
+  const missing = clips.map((c) => c.url).filter((u) => !texts[radioId(u) ?? ""]);
+  const missingKey = missing.join(",");
+  const names = Object.values(drivers).map((d) => d.name);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `missing` y `names` salen de las claves
+  useEffect(() => {
+    if (!loaded || !missing.length) return;
+    let live = true;
+    (async () => {
+      if (!(await helperAvailable()) || !live) return;
+      const fresh = missing.filter((u) => !asked.current.has(u));
+      for (const u of fresh) asked.current.add(u);
+      try {
+        if (fresh.length) await requestTranscripts(fresh, names);
+        // Se consulta hasta que no quede nada pendiente.
+        while (live) {
+          const answers = await Promise.all(files.split(",").filter(Boolean).map(helperTexts));
+          if (!live) return;
+          setLocal(Object.assign({}, ...answers.map((a) => a.texts)));
+          const pending = Math.max(0, ...answers.map((a) => a.pending));
+          setLocalPending(pending);
+          if (!pending) return;
+          await new Promise((r) => setTimeout(r, 4000));
+        }
+      } catch {
+        // Si el servicio se cae a mitad de camino, vuelve a intentarse la próxima vez que se abra la sesión.
+        for (const u of fresh) asked.current.delete(u);
+        setLocalPending(0);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [loaded, missingKey, files]);
 
   // Al salir de la pantalla, el audio se corta.
   useEffect(() => () => audio.current?.pause(), []);
@@ -96,7 +142,8 @@ export function RadioPanel({ clips, drivers, startTs, onJump }: Props) {
           );
         })}
       </ul>
-      {Object.keys(texts).length > 0 && (
+      {localPending > 0 && <p className="muted small">Transcribiendo en esta compu: faltan {localPending}…</p>}
+      {Object.values(texts).some((t) => t.text) && (
         <p className="muted small">Transcripción automática: puede tener errores, sobre todo con nombres y jerga.</p>
       )}
       {list.length > SHOWN && (

@@ -23,7 +23,13 @@ cd "$REPO" || { echo "falta la copia en $REPO: corré npm run transcribe:auto:in
 
 # Siempre al día con GitHub (la copia es solo de la herramienta).
 git fetch -q origin main || { echo "sin conexión a GitHub"; exit 1; }
+BEFORE="$(git rev-parse HEAD)"
 git reset -q --hard origin/main
+AFTER="$(git rev-parse HEAD)"
+# Si cambió el código del servicio local, se lo reinicia para que use la versión nueva.
+if [ "$BEFORE" != "$AFTER" ] && git diff --name-only "$BEFORE" "$AFTER" | grep -qE '^(scripts|packages)/'; then
+  launchctl kickstart -k "gui/$(id -u)/com.f1tracker.radio-helper" 2>/dev/null && echo "servicio local reiniciado"
+fi
 
 # Dependencias: solo se reinstalan si cambiaron.
 SUM="$(shasum package-lock.json | cut -d' ' -f1)"
@@ -43,3 +49,6 @@ if [ -n "$(git status --porcelain -- transcripts)" ]; then
 else
   echo "nada nuevo para subir"
 fi
+
+# Se actualiza esta misma tarea para la próxima corrida (un mv es atómico: no pisa a la que está leyéndose).
+cp -f scripts/transcribe-auto.sh "$HOME_DIR/transcribe-auto.sh.new" && mv -f "$HOME_DIR/transcribe-auto.sh.new" "$HOME_DIR/transcribe-auto.sh"
